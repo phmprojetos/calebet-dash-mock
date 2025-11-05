@@ -1,17 +1,32 @@
+import { useState, useMemo } from "react";
 import { TrendingUp, TrendingDown, DollarSign, Target, Percent, BarChart3 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
-import { mockStats } from "@/lib/mockData";
+import { mockBets } from "@/lib/mockData";
+import { filterBetsByDateRange, calculateStats, getDateRange } from "@/lib/utils";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 export default function Dashboard() {
+  const [startDate, setStartDate] = useState<Date>(() => getDateRange("all").start);
+  const [endDate, setEndDate] = useState<Date>(() => getDateRange("all").end);
+
+  const filteredStats = useMemo(() => {
+    const filteredBets = filterBetsByDateRange(mockBets, startDate, endDate);
+    return calculateStats(filteredBets);
+  }, [startDate, endDate]);
+
+  const handleRangeChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
   const resultData = [
-    { name: "Vitórias", value: mockStats.by_result.win, color: "hsl(var(--success))" },
-    { name: "Derrotas", value: mockStats.by_result.loss, color: "hsl(var(--destructive))" },
-    { name: "Pendentes", value: mockStats.by_result.pending, color: "hsl(var(--muted))" },
+    { name: "Vitórias", value: filteredStats.by_result.win, color: "hsl(var(--success))" },
+    { name: "Derrotas", value: filteredStats.by_result.loss, color: "hsl(var(--destructive))" },
+    { name: "Pendentes", value: filteredStats.by_result.pending, color: "hsl(var(--muted))" },
   ];
 
-  const marketData = Object.entries(mockStats.by_market).map(([name, data]) => ({
+  const marketData = Object.entries(filteredStats.by_market).map(([name, data]) => ({
     name: name.length > 15 ? name.substring(0, 15) + "..." : name,
     roi: data.roi,
     winRate: data.win_rate,
@@ -24,41 +39,43 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Visão geral das suas apostas esportivas</p>
       </div>
 
+      <DateRangeFilter onRangeChange={handleRangeChange} />
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total de Apostas"
-          value={mockStats.total_bets}
+          value={filteredStats.total_bets}
           icon={BarChart3}
           trend="neutral"
         />
         <StatCard
           title="Stake Total"
-          value={`R$ ${mockStats.total_stake.toLocaleString("pt-BR")}`}
+          value={`R$ ${filteredStats.total_stake.toLocaleString("pt-BR")}`}
           icon={DollarSign}
           trend="neutral"
         />
         <StatCard
           title="Lucro Total"
-          value={`R$ ${mockStats.total_profit.toLocaleString("pt-BR")}`}
-          icon={mockStats.total_profit >= 0 ? TrendingUp : TrendingDown}
-          trend={mockStats.total_profit >= 0 ? "positive" : "negative"}
+          value={`R$ ${filteredStats.total_profit.toLocaleString("pt-BR")}`}
+          icon={filteredStats.total_profit >= 0 ? TrendingUp : TrendingDown}
+          trend={filteredStats.total_profit >= 0 ? "positive" : "negative"}
         />
         <StatCard
           title="Win Rate"
-          value={`${mockStats.win_rate}%`}
+          value={`${filteredStats.win_rate}%`}
           icon={Target}
-          trend={mockStats.win_rate >= 50 ? "positive" : "negative"}
-          subtitle={`${mockStats.by_result.win} vitórias / ${mockStats.by_result.loss} derrotas`}
+          trend={filteredStats.win_rate >= 50 ? "positive" : "negative"}
+          subtitle={`${filteredStats.by_result.win} vitórias / ${filteredStats.by_result.loss} derrotas`}
         />
         <StatCard
           title="ROI"
-          value={`${mockStats.roi.toFixed(2)}%`}
+          value={`${filteredStats.roi.toFixed(2)}%`}
           icon={Percent}
-          trend={mockStats.roi >= 0 ? "positive" : "negative"}
+          trend={filteredStats.roi >= 0 ? "positive" : "negative"}
         />
         <StatCard
           title="Odd Média"
-          value={mockStats.avg_odd.toFixed(2)}
+          value={filteredStats.avg_odd.toFixed(2)}
           icon={BarChart3}
           trend="neutral"
         />
@@ -116,39 +133,41 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-success/50 bg-success/5">
-          <CardHeader>
-            <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p className="text-2xl font-bold">{mockStats.best_market}</p>
-              <div className="text-sm text-muted-foreground">
-                <p>Win Rate: {mockStats.by_market[mockStats.best_market].win_rate}%</p>
-                <p>ROI: {mockStats.by_market[mockStats.best_market].roi.toFixed(2)}%</p>
-                <p>Lucro: R$ {mockStats.by_market[mockStats.best_market].total_profit.toLocaleString("pt-BR")}</p>
+      {filteredStats.best_market && filteredStats.worst_market && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="border-success/50 bg-success/5">
+            <CardHeader>
+              <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-2xl font-bold">{filteredStats.best_market}</p>
+                <div className="text-sm text-muted-foreground">
+                  <p>Win Rate: {filteredStats.by_market[filteredStats.best_market].win_rate}%</p>
+                  <p>ROI: {filteredStats.by_market[filteredStats.best_market].roi.toFixed(2)}%</p>
+                  <p>Lucro: R$ {filteredStats.by_market[filteredStats.best_market].total_profit.toLocaleString("pt-BR")}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardHeader>
-            <CardTitle className="text-destructive">⚠️ Pior Mercado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <p className="text-2xl font-bold">{mockStats.worst_market}</p>
-              <div className="text-sm text-muted-foreground">
-                <p>Win Rate: {mockStats.by_market[mockStats.worst_market].win_rate}%</p>
-                <p>ROI: {mockStats.by_market[mockStats.worst_market].roi.toFixed(2)}%</p>
-                <p>Lucro: R$ {mockStats.by_market[mockStats.worst_market].total_profit.toLocaleString("pt-BR")}</p>
+          <Card className="border-destructive/50 bg-destructive/5">
+            <CardHeader>
+              <CardTitle className="text-destructive">⚠️ Pior Mercado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p className="text-2xl font-bold">{filteredStats.worst_market}</p>
+                <div className="text-sm text-muted-foreground">
+                  <p>Win Rate: {filteredStats.by_market[filteredStats.worst_market].win_rate}%</p>
+                  <p>ROI: {filteredStats.by_market[filteredStats.worst_market].roi.toFixed(2)}%</p>
+                  <p>Lucro: R$ {filteredStats.by_market[filteredStats.worst_market].total_profit.toLocaleString("pt-BR")}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
