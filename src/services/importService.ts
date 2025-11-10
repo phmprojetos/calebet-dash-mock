@@ -40,6 +40,8 @@ export const importService = {
     const response = await requestWithFallback([
       () =>
         sendRequest(`/import/csv`, { params: { user_id: userId } }).then((res) => res.data),
+      () =>
+        sendRequest(`/import/cvs`, { params: { user_id: userId } }).then((res) => res.data),
       () => sendRequest(`/users/${userId}/bets/import`).then((res) => res.data),
       () => sendRequest(`/import/`).then((res) => res.data),
     ]);
