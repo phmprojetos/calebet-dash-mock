@@ -14,11 +14,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BetDialog } from "@/components/BetDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Bets() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBet, setEditingBet] = useState<Bet | undefined>();
-  
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [betToDelete, setBetToDelete] = useState<Bet | undefined>();
+
   const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
 
   const getResultBadge = (result: Bet["result"]) => {
@@ -37,10 +49,20 @@ export default function Bets() {
     );
   };
 
-  const handleDelete = (betId: string) => {
-    if (confirm("Tem certeza que deseja excluir esta aposta?")) {
-      deleteBet(betId);
-    }
+  const handleDelete = (bet: Bet) => {
+    setBetToDelete(bet);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!betToDelete) return;
+
+    deleteBet(betToDelete.id, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setBetToDelete(undefined);
+      },
+    });
   };
 
   const handleEdit = (bet: Bet) => {
@@ -147,7 +169,7 @@ export default function Bets() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(bet.id)}
+                      onClick={() => handleDelete(bet)}
                       disabled={isDeleting}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -169,6 +191,31 @@ export default function Bets() {
         bet={editingBet}
         onSave={handleSave}
       />
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setBetToDelete(undefined);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir aposta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a aposta
+              {betToDelete?.event ? ` "${betToDelete.event}"` : ""}? Essa ação não pode ser
+              desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
