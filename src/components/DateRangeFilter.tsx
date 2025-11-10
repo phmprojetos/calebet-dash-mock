@@ -19,9 +19,15 @@ interface DateRangeFilterProps {
   onRangeChange: (startDate: Date, endDate: Date) => void;
   selectedPeriod?: DateRangePeriod;
   onPeriodChange?: (period: DateRangePeriod) => void;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
-export function DateRangeFilter({ onRangeChange, selectedPeriod, onPeriodChange }: DateRangeFilterProps) {
+export function DateRangeFilter({
+  onRangeChange,
+  selectedPeriod,
+  onPeriodChange,
+  customRange,
+}: DateRangeFilterProps) {
   const [internalSelectedPeriod, setInternalSelectedPeriod] = useState<DateRangePeriod>(selectedPeriod ?? "all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
@@ -36,6 +42,14 @@ export function DateRangeFilter({ onRangeChange, selectedPeriod, onPeriodChange 
       }
     }
   }, [selectedPeriod]);
+
+  useEffect(() => {
+    if (!customRange || currentPeriod !== "custom") {
+      return;
+    }
+
+    setDateRange({ from: customRange.startDate, to: customRange.endDate });
+  }, [customRange, currentPeriod]);
 
   const handlePeriodChange = (period: Exclude<DateRangePeriod, "custom">) => {
     if (selectedPeriod === undefined) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Bet } from "@/lib/mockData";
 import { useBets } from "@/hooks/useBets";
@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { useSearchParams } from "react-router-dom";
 
 export default function Bets() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -45,23 +46,136 @@ export default function Bets() {
   const [endDate, setEndDate] = useState<Date>(initialRange.end);
   const [selectedPeriod, setSelectedPeriod] = useState<DateRangePeriod>("30days");
   const [resultFilter, setResultFilter] = useState<Bet["result"] | "all">("all");
+  const [marketFilter, setMarketFilter] = useState<string>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isInitializing = useRef(true);
 
   const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
+
+  const markets = useMemo(() => {
+    const uniqueMarkets = new Set(bets.map((bet) => bet.market));
+    if (marketFilter !== "all") {
+      uniqueMarkets.add(marketFilter);
+    }
+    return Array.from(uniqueMarkets).sort((a, b) => a.localeCompare(b));
+  }, [bets, marketFilter]);
 
   const filteredBets = useMemo(() => {
     return bets.filter((bet) => {
       const createdAt = new Date(bet.created_at);
       const isWithinRange = createdAt >= startDate && createdAt <= endDate;
       const matchesResult = resultFilter === "all" || bet.result === resultFilter;
+      const matchesMarket = marketFilter === "all" || bet.market === marketFilter;
 
-      return isWithinRange && matchesResult;
+      return isWithinRange && matchesResult && matchesMarket;
     });
-  }, [bets, endDate, resultFilter, startDate]);
+  }, [bets, endDate, marketFilter, resultFilter, startDate]);
 
   const handleDateRangeChange = (start: Date, end: Date) => {
     setStartDate(new Date(start));
     setEndDate(new Date(end));
   };
+
+  useEffect(() => {
+    const periodParam = searchParams.get("period") as DateRangePeriod | null;
+    const startParam = searchParams.get("start");
+    const endParam = searchParams.get("end");
+    const resultParam = searchParams.get("result");
+    const marketParam = searchParams.get("market");
+
+    const allowedPeriods: DateRangePeriod[] = ["today", "7days", "30days", "all", "custom"];
+
+    if (periodParam && allowedPeriods.includes(periodParam)) {
+      if (periodParam !== selectedPeriod) {
+        setSelectedPeriod(periodParam);
+      }
+
+      if (periodParam === "custom") {
+        if (startParam && endParam) {
+          const start = new Date(startParam);
+          const end = new Date(endParam);
+          if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+            if (startDate.getTime() !== start.getTime()) {
+              setStartDate(start);
+            }
+            if (endDate.getTime() !== end.getTime()) {
+              setEndDate(end);
+            }
+          }
+        }
+      } else {
+        const range = getDateRange(periodParam);
+        if (startDate.getTime() !== range.start.getTime()) {
+          setStartDate(range.start);
+        }
+        if (endDate.getTime() !== range.end.getTime()) {
+          setEndDate(range.end);
+        }
+      }
+    }
+
+    if (resultParam) {
+      const allowedResults: Array<Bet["result"] | "all"> = [
+        "all",
+        "win",
+        "loss",
+        "pending",
+        "void",
+        "cashout",
+      ];
+      if (allowedResults.includes(resultParam as Bet["result"] | "all") && resultParam !== resultFilter) {
+        setResultFilter(resultParam as Bet["result"] | "all");
+      }
+    } else if (resultFilter !== "all") {
+      setResultFilter("all");
+    }
+
+    if (marketParam) {
+      if (marketParam !== marketFilter) {
+        setMarketFilter(marketParam);
+      }
+    } else if (marketFilter !== "all") {
+      setMarketFilter("all");
+    }
+
+    isInitializing.current = false;
+  }, [
+    endDate,
+    marketFilter,
+    resultFilter,
+    searchParams,
+    selectedPeriod,
+    startDate,
+  ]);
+
+  useEffect(() => {
+    if (isInitializing.current) {
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.set("period", selectedPeriod);
+
+    if (selectedPeriod === "custom") {
+      params.set("start", startDate.toISOString());
+      params.set("end", endDate.toISOString());
+    }
+
+    if (resultFilter !== "all") {
+      params.set("result", resultFilter);
+    }
+
+    if (marketFilter !== "all") {
+      params.set("market", marketFilter);
+    }
+
+    const newSearch = params.toString();
+    const currentSearch = searchParams.toString();
+
+    if (newSearch !== currentSearch) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [endDate, marketFilter, resultFilter, searchParams, selectedPeriod, setSearchParams, startDate]);
 
   const getResultBadge = (result: Bet["result"]) => {
     const variants = {
@@ -146,6 +260,7 @@ export default function Bets() {
           onRangeChange={handleDateRangeChange}
           selectedPeriod={selectedPeriod}
           onPeriodChange={setSelectedPeriod}
+          customRange={selectedPeriod === "custom" ? { startDate, endDate } : undefined}
         />
 
         <div className="flex flex-wrap items-center justify-end gap-3 md:justify-start">
@@ -166,6 +281,23 @@ export default function Bets() {
               <SelectItem value="pending">Pendente</SelectItem>
               <SelectItem value="void">Void</SelectItem>
               <SelectItem value="cashout">Cashout</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Label htmlFor="market-filter" className="text-sm font-medium">
+            Mercado
+          </Label>
+          <Select value={marketFilter} onValueChange={(value) => setMarketFilter(value)}>
+            <SelectTrigger id="market-filter" className="w-[220px]">
+              <SelectValue placeholder="Todos os mercados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {markets.map((market) => (
+                <SelectItem key={market} value={market}>
+                  {market}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
