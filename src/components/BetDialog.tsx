@@ -35,6 +35,7 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
     result: "pending",
     profit: 0,
     created_at: new Date().toISOString(),
+    source: "dashboard",
   });
 
   useEffect(() => {
@@ -50,6 +51,7 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
         result: "pending",
         profit: 0,
         created_at: new Date().toISOString(),
+        source: "dashboard",
       });
     }
   }, [bet, open]);

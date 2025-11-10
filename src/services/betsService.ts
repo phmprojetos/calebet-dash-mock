@@ -54,6 +54,7 @@ const normalizeBet = (bet: RawBet): Bet => {
     getValue(bet, ["created_at", "createdAt", "timestamp", "date", "placed_at"]) ??
     new Date().toISOString();
   const rawUpdatedAt = getValue(bet, ["updated_at", "updatedAt", "modified_at", "modifiedAt"]);
+  const rawSource = getValue(bet, ["source", "origin", "provider"]);
 
   return {
     id: rawId ? String(rawId) : `bet-${Math.random().toString(36).slice(2)}`,
@@ -73,6 +74,7 @@ const normalizeBet = (bet: RawBet): Bet => {
         : rawUpdatedAt === null
           ? null
           : undefined,
+    source: typeof rawSource === "string" ? rawSource : undefined,
   };
 };
 
@@ -123,6 +125,7 @@ export interface CreateBetDTO {
   result: "win" | "loss" | "pending" | "void" | "cashout";
   profit: number;
   created_at?: string;
+  source?: string;
 }
 
 export interface UpdateBetDTO {
@@ -150,6 +153,7 @@ export const betsService = {
     const payload = {
       ...bet,
       user_id: DEMO_USER_ID,
+      source: bet.source ?? "dashboard",
     };
 
     return requestWithFallback<Bet>([
