@@ -49,8 +49,9 @@ export default function Bets() {
   const [marketFilter, setMarketFilter] = useState<string>("all");
   const [searchParams, setSearchParams] = useSearchParams();
   const isInitializing = useRef(true);
+  const hasTriggeredFilterRefetch = useRef(false);
 
-  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
+  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting, refetch } = useBets();
 
   const markets = useMemo(() => {
     const uniqueMarkets = new Set(bets.map((bet) => bet.market));
@@ -76,41 +77,40 @@ export default function Bets() {
     setEndDate(new Date(end));
   };
 
+  const searchParamsString = searchParams.toString();
+
   useEffect(() => {
-    const periodParam = searchParams.get("period") as DateRangePeriod | null;
-    const startParam = searchParams.get("start");
-    const endParam = searchParams.get("end");
-    const resultParam = searchParams.get("result");
-    const marketParam = searchParams.get("market");
+    const params = new URLSearchParams(searchParamsString);
+    const periodParam = params.get("period") as DateRangePeriod | null;
+    const startParam = params.get("start");
+    const endParam = params.get("end");
+    const resultParam = params.get("result");
+    const marketParam = params.get("market");
 
     const allowedPeriods: DateRangePeriod[] = ["today", "7days", "30days", "all", "custom"];
 
     if (periodParam && allowedPeriods.includes(periodParam)) {
-      if (periodParam !== selectedPeriod) {
-        setSelectedPeriod(periodParam);
-      }
+      setSelectedPeriod((current) => (current !== periodParam ? periodParam : current));
 
       if (periodParam === "custom") {
         if (startParam && endParam) {
           const start = new Date(startParam);
           const end = new Date(endParam);
           if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
-            if (startDate.getTime() !== start.getTime()) {
-              setStartDate(start);
-            }
-            if (endDate.getTime() !== end.getTime()) {
-              setEndDate(end);
-            }
+            setStartDate((current) =>
+              current.getTime() !== start.getTime() ? start : current
+            );
+            setEndDate((current) => (current.getTime() !== end.getTime() ? end : current));
           }
         }
       } else {
         const range = getDateRange(periodParam);
-        if (startDate.getTime() !== range.start.getTime()) {
-          setStartDate(range.start);
-        }
-        if (endDate.getTime() !== range.end.getTime()) {
-          setEndDate(range.end);
-        }
+        setStartDate((current) =>
+          current.getTime() !== range.start.getTime() ? range.start : current
+        );
+        setEndDate((current) =>
+          current.getTime() !== range.end.getTime() ? range.end : current
+        );
       }
     }
 
@@ -123,30 +123,23 @@ export default function Bets() {
         "void",
         "cashout",
       ];
-      if (allowedResults.includes(resultParam as Bet["result"] | "all") && resultParam !== resultFilter) {
-        setResultFilter(resultParam as Bet["result"] | "all");
+      if (allowedResults.includes(resultParam as Bet["result"] | "all")) {
+        setResultFilter((current) =>
+          current !== resultParam ? (resultParam as Bet["result"] | "all") : current
+        );
       }
-    } else if (resultFilter !== "all") {
-      setResultFilter("all");
+    } else {
+      setResultFilter((current) => (current !== "all" ? "all" : current));
     }
 
     if (marketParam) {
-      if (marketParam !== marketFilter) {
-        setMarketFilter(marketParam);
-      }
-    } else if (marketFilter !== "all") {
-      setMarketFilter("all");
+      setMarketFilter((current) => (current !== marketParam ? marketParam : current));
+    } else {
+      setMarketFilter((current) => (current !== "all" ? "all" : current));
     }
 
     isInitializing.current = false;
-  }, [
-    endDate,
-    marketFilter,
-    resultFilter,
-    searchParams,
-    selectedPeriod,
-    startDate,
-  ]);
+  }, [searchParamsString]);
 
   useEffect(() => {
     if (isInitializing.current) {
@@ -170,12 +163,33 @@ export default function Bets() {
     }
 
     const newSearch = params.toString();
-    const currentSearch = searchParams.toString();
+    const currentSearch = searchParamsString;
 
     if (newSearch !== currentSearch) {
       setSearchParams(params, { replace: true });
     }
-  }, [endDate, marketFilter, resultFilter, searchParams, selectedPeriod, setSearchParams, startDate]);
+  }, [
+    endDate,
+    marketFilter,
+    resultFilter,
+    searchParamsString,
+    selectedPeriod,
+    setSearchParams,
+    startDate,
+  ]);
+
+  useEffect(() => {
+    if (isInitializing.current) {
+      return;
+    }
+
+    if (!hasTriggeredFilterRefetch.current) {
+      hasTriggeredFilterRefetch.current = true;
+      return;
+    }
+
+    refetch();
+  }, [endDate, marketFilter, refetch, resultFilter, selectedPeriod, startDate]);
 
   const getResultBadge = (result: Bet["result"]) => {
     const variants = {
