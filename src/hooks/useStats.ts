@@ -9,6 +9,7 @@ export const useStats = (params: StatsParams = {}) => {
       params.userId || DEMO_USER_ID,
       formatStatsDateParam(params.startDate),
       formatStatsDateParam(params.endDate),
+
     ],
     queryFn: () => statsService.getStats(params),
     staleTime: 1000 * 60 * 5, // 5 minutos
