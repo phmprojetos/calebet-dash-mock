@@ -81,10 +81,19 @@ export const statsService = {
   // Buscar estatísticas do usuário
   getStats: async (params: StatsParams = {}): Promise<Stats> => {
     const userId = params.userId || DEMO_USER_ID;
+    const queryParams: Record<string, string> = {};
+
+    if (params.startDate) {
+      queryParams.start_date = params.startDate.toISOString();
+    }
+
+    if (params.endDate) {
+      queryParams.end_date = params.endDate.toISOString();
+    }
 
     const response = await requestWithFallback([
-      () => api.get(`/users/${userId}/stats`).then((res) => res.data),
-      () => api.get(`/stats/${userId}`).then((res) => res.data),
+      () => api.get(`/stats/${userId}`, { params: queryParams }).then((res) => res.data),
+      () => api.get(`/users/${userId}/stats`, { params: queryParams }).then((res) => res.data),
     ]);
 
     return normalizeStats(response);

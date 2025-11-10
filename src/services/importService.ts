@@ -5,6 +5,10 @@ export interface ImportResponse {
   imported_count: number;
 }
 
+interface ImportRequestConfig {
+  params?: Record<string, string>;
+}
+
 const toNumber = (value: unknown): number => {
   if (typeof value === "number") return value;
   if (typeof value === "string") {
@@ -24,15 +28,18 @@ export const importService = {
     formData.append("file", file);
     formData.append("user_id", userId);
 
-    const sendRequest = (endpoint: string) =>
+    const sendRequest = (endpoint: string, config: ImportRequestConfig = {}) =>
       api.post(endpoint, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
         timeout: 60000, // 60 segundos para upload
+        ...config,
       });
 
     const response = await requestWithFallback([
+      () =>
+        sendRequest(`/import/csv`, { params: { user_id: userId } }).then((res) => res.data),
       () => sendRequest(`/users/${userId}/bets/import`).then((res) => res.data),
       () => sendRequest(`/import/`).then((res) => res.data),
     ]);

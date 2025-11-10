@@ -1,4 +1,5 @@
 import { api, DEMO_USER_ID, requestWithFallback, unwrapApiResponse } from "@/lib/api";
+import { mockInsights } from "@/lib/mockData";
 
 export interface Insight {
   id: number;
@@ -16,12 +17,13 @@ export const insightsService = {
     const response = await requestWithFallback([
       () =>
         api
-          .get(`/users/${userId}/insights`, { timeout: 60000 })
+          .get(`/insights/${userId}`, { timeout: 60000 })
           .then((res) => res.data),
       () =>
         api
-          .get(`/insights/${userId}`, { timeout: 60000 })
+          .get(`/users/${userId}/insights`, { timeout: 60000 })
           .then((res) => res.data),
+      () => Promise.resolve({ insights: mockInsights }),
     ]);
 
     const payload = unwrapApiResponse<InsightsResponse | Insight[]>(response);
