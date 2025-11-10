@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Bet } from "@/lib/mockData";
 import { useBets } from "@/hooks/useBets";
@@ -24,14 +24,44 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
+import { getDateRange } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 export default function Bets() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBet, setEditingBet] = useState<Bet | undefined>();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [betToDelete, setBetToDelete] = useState<Bet | undefined>();
+  const initialRange = useMemo(() => getDateRange("30days"), []);
+  const [startDate, setStartDate] = useState<Date>(initialRange.start);
+  const [endDate, setEndDate] = useState<Date>(initialRange.end);
+  const [selectedPeriod, setSelectedPeriod] = useState<DateRangePeriod>("30days");
+  const [resultFilter, setResultFilter] = useState<Bet["result"] | "all">("all");
 
   const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
+
+  const filteredBets = useMemo(() => {
+    return bets.filter((bet) => {
+      const createdAt = new Date(bet.created_at);
+      const isWithinRange = createdAt >= startDate && createdAt <= endDate;
+      const matchesResult = resultFilter === "all" || bet.result === resultFilter;
+
+      return isWithinRange && matchesResult;
+    });
+  }, [bets, endDate, resultFilter, startDate]);
+
+  const handleDateRangeChange = (start: Date, end: Date) => {
+    setStartDate(new Date(start));
+    setEndDate(new Date(end));
+  };
 
   const getResultBadge = (result: Bet["result"]) => {
     const variants = {
@@ -111,6 +141,36 @@ export default function Bets() {
         </Button>
       </div>
 
+      <div className="space-y-4">
+        <DateRangeFilter
+          onRangeChange={handleDateRangeChange}
+          selectedPeriod={selectedPeriod}
+          onPeriodChange={setSelectedPeriod}
+        />
+
+        <div className="flex flex-wrap items-center justify-end gap-3 md:justify-start">
+          <Label htmlFor="result-filter" className="text-sm font-medium">
+            Resultado
+          </Label>
+          <Select
+            value={resultFilter}
+            onValueChange={(value) => setResultFilter(value as Bet["result"] | "all")}
+          >
+            <SelectTrigger id="result-filter" className="w-[220px]">
+              <SelectValue placeholder="Todos os resultados" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="win">Vitória</SelectItem>
+              <SelectItem value="loss">Derrota</SelectItem>
+              <SelectItem value="pending">Pendente</SelectItem>
+              <SelectItem value="void">Void</SelectItem>
+              <SelectItem value="cashout">Cashout</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       <div className="rounded-md border border-border bg-card">
         <Table>
           <TableHeader>
@@ -137,14 +197,15 @@ export default function Bets() {
                   ))}
                 </TableRow>
               ))
-            ) : bets.length === 0 ? (
+            ) : filteredBets.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground">
-                  Nenhuma aposta encontrada. Clique em "Nova Aposta" para adicionar.
+                  Nenhuma aposta encontrada para os filtros selecionados. Ajuste os filtros ou
+                  clique em "Nova Aposta" para adicionar uma nova entrada.
                 </TableCell>
               </TableRow>
             ) : (
-              bets.map((bet) => (
+              filteredBets.map((bet) => (
                 <TableRow key={bet.id}>
                   <TableCell className="font-mono text-sm">{bet.id}</TableCell>
                   <TableCell className="font-medium">{bet.event}</TableCell>
