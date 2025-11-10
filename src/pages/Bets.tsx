@@ -37,9 +37,9 @@ export default function Bets() {
     );
   };
 
-  const handleDelete = (ordem_id: string) => {
+  const handleDelete = (betId: string) => {
     if (confirm("Tem certeza que deseja excluir esta aposta?")) {
-      deleteBet(ordem_id);
+      deleteBet(betId);
     }
   };
 
@@ -51,7 +51,7 @@ export default function Bets() {
   const handleSave = (bet: Bet) => {
     if (editingBet) {
       updateBet({
-        ordemId: bet.ordem_id,
+        betId: bet.id,
         data: {
           event: bet.event,
           market: bet.market,
@@ -123,8 +123,8 @@ export default function Bets() {
               </TableRow>
             ) : (
               bets.map((bet) => (
-                <TableRow key={bet.ordem_id}>
-                  <TableCell className="font-mono text-sm">{bet.ordem_id}</TableCell>
+                <TableRow key={bet.id}>
+                  <TableCell className="font-mono text-sm">{bet.id}</TableCell>
                   <TableCell className="font-medium">{bet.event}</TableCell>
                   <TableCell>{bet.market}</TableCell>
                   <TableCell>{bet.odd.toFixed(2)}</TableCell>
@@ -147,7 +147,7 @@ export default function Bets() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDelete(bet.ordem_id)}
+                      onClick={() => handleDelete(bet.id)}
                       disabled={isDeleting}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isAxiosError } from "axios";
 import { Upload, FileSpreadsheet, CheckCircle2, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { importService } from "@/services/importService";
@@ -39,10 +40,14 @@ export default function Import() {
       // Limpar estado e redirecionar
       setFile(null);
       setTimeout(() => navigate("/bets"), 1500);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Erro ao importar CSV",
-        description: error.response?.data?.detail || "Verifique o formato do arquivo e tente novamente.",
+        description:
+          (isAxiosError(error) &&
+            typeof error.response?.data?.detail === "string" &&
+            error.response.data.detail) ||
+          (error instanceof Error ? error.message : "Verifique o formato do arquivo e tente novamente."),
         variant: "destructive",
       });
     } finally {
