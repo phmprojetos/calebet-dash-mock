@@ -11,6 +11,7 @@ export interface Bet {
   profit: number;
   created_at: string;
   updated_at?: string | null;
+  source?: string;
 }
 
 export interface MarketStats {
