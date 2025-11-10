@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
-import { mockBets, Bet } from "@/lib/mockData";
+import { Bet } from "@/lib/mockData";
+import { useBets } from "@/hooks/useBets";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -11,14 +12,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BetDialog } from "@/components/BetDialog";
 
 export default function Bets() {
-  const [bets, setBets] = useState<Bet[]>(mockBets);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBet, setEditingBet] = useState<Bet | undefined>();
-  const { toast } = useToast();
+  
+  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
 
   const getResultBadge = (result: Bet["result"]) => {
     const variants = {
@@ -37,11 +38,9 @@ export default function Bets() {
   };
 
   const handleDelete = (ordem_id: string) => {
-    setBets(bets.filter((bet) => bet.ordem_id !== ordem_id));
-    toast({
-      title: "Aposta excluída",
-      description: "A aposta foi removida com sucesso.",
-    });
+    if (confirm("Tem certeza que deseja excluir esta aposta?")) {
+      deleteBet(ordem_id);
+    }
   };
 
   const handleEdit = (bet: Bet) => {
@@ -51,16 +50,26 @@ export default function Bets() {
 
   const handleSave = (bet: Bet) => {
     if (editingBet) {
-      setBets(bets.map((b) => (b.ordem_id === bet.ordem_id ? bet : b)));
-      toast({
-        title: "Aposta atualizada",
-        description: "As alterações foram salvas com sucesso.",
+      updateBet({
+        ordemId: bet.ordem_id,
+        data: {
+          event: bet.event,
+          market: bet.market,
+          odd: bet.odd,
+          stake: bet.stake,
+          result: bet.result,
+          profit: bet.profit,
+        },
       });
     } else {
-      setBets([bet, ...bets]);
-      toast({
-        title: "Aposta criada",
-        description: "A nova aposta foi adicionada com sucesso.",
+      createBet({
+        event: bet.event,
+        market: bet.market,
+        odd: bet.odd,
+        stake: bet.stake,
+        result: bet.result,
+        profit: bet.profit,
+        created_at: bet.created_at,
       });
     }
     setEditingBet(undefined);
@@ -96,38 +105,57 @@ export default function Bets() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bets.map((bet) => (
-              <TableRow key={bet.ordem_id}>
-                <TableCell className="font-mono text-sm">{bet.ordem_id}</TableCell>
-                <TableCell className="font-medium">{bet.event}</TableCell>
-                <TableCell>{bet.market}</TableCell>
-                <TableCell>{bet.odd.toFixed(2)}</TableCell>
-                <TableCell>R$ {bet.stake}</TableCell>
-                <TableCell>{getResultBadge(bet.result)}</TableCell>
-                <TableCell>
-                  <span
-                    className={
-                      bet.profit >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"
-                    }
-                  >
-                    R$ {bet.profit.toLocaleString("pt-BR")}
-                  </span>
-                </TableCell>
-                <TableCell>{new Date(bet.created_at).toLocaleDateString("pt-BR")}</TableCell>
-                <TableCell className="text-right space-x-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(bet)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(bet.ordem_id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+            {isLoading ? (
+              [...Array(5)].map((_, i) => (
+                <TableRow key={i}>
+                  {[...Array(9)].map((_, j) => (
+                    <TableCell key={j}>
+                      <Skeleton className="h-4 w-full" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : bets.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  Nenhuma aposta encontrada. Clique em "Nova Aposta" para adicionar.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              bets.map((bet) => (
+                <TableRow key={bet.ordem_id}>
+                  <TableCell className="font-mono text-sm">{bet.ordem_id}</TableCell>
+                  <TableCell className="font-medium">{bet.event}</TableCell>
+                  <TableCell>{bet.market}</TableCell>
+                  <TableCell>{bet.odd.toFixed(2)}</TableCell>
+                  <TableCell>R$ {bet.stake}</TableCell>
+                  <TableCell>{getResultBadge(bet.result)}</TableCell>
+                  <TableCell>
+                    <span
+                      className={
+                        bet.profit >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"
+                      }
+                    >
+                      R$ {bet.profit.toLocaleString("pt-BR")}
+                    </span>
+                  </TableCell>
+                  <TableCell>{new Date(bet.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                  <TableCell className="text-right space-x-2">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(bet)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(bet.ordem_id)}
+                      disabled={isDeleting}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>

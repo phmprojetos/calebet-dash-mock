@@ -1,19 +1,20 @@
-import { useState } from "react";
-import { Lightbulb, Sparkles } from "lucide-react";
+import { Lightbulb, Sparkles, Loader2 } from "lucide-react";
+import { useInsights } from "@/hooks/useInsights";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { mockInsights, generateRandomInsight } from "@/lib/mockData";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { DEMO_USER_ID } from "@/lib/api";
 
 export default function Insights() {
-  const [insights, setInsights] = useState(mockInsights);
+  const { data: insights, isLoading, isError, refetch, isRefetching } = useInsights();
+  const queryClient = useQueryClient();
 
   const handleGenerateNew = () => {
-    const newInsight = {
-      ...generateRandomInsight(),
-      id: Date.now(),
-    };
-    setInsights([newInsight, ...insights.slice(0, 4)]);
+    // Força refresh dos insights
+    queryClient.invalidateQueries({ queryKey: ["insights", DEMO_USER_ID] });
+    refetch();
   };
 
   const getInsightColor = (type: string) => {
@@ -42,6 +43,17 @@ export default function Insights() {
     }
   };
 
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Insights da IA</h1>
+          <p className="text-destructive">Erro ao carregar insights. Tente novamente.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -51,27 +63,50 @@ export default function Insights() {
             Análises automáticas das suas apostas com sugestões personalizadas
           </p>
         </div>
-        <Button onClick={handleGenerateNew}>
-          <Sparkles className="mr-2 h-4 w-4" />
-          Gerar Novas Sugestões
+        <Button onClick={handleGenerateNew} disabled={isRefetching}>
+          {isRefetching ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Analisando...
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Gerar Novas Sugestões
+            </>
+          )}
         </Button>
       </div>
 
-      <div className="space-y-4">
-        {insights.map((insight) => (
-          <Card key={insight.id} className={cn(getInsightColor(insight.type))}>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <Lightbulb className={cn("h-6 w-6", getIconColor(insight.type))} />
-                <span>Insight Automático</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-base leading-relaxed">{insight.message}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      ) : insights && insights.length > 0 ? (
+        <div className="space-y-4">
+          {insights.map((insight) => (
+            <Card key={insight.id} className={cn(getInsightColor(insight.type))}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-3 text-lg">
+                  <Lightbulb className={cn("h-6 w-6", getIconColor(insight.type))} />
+                  <span>Insight Automático</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-base leading-relaxed">{insight.message}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="py-8 text-center text-muted-foreground">
+            Nenhum insight disponível no momento. Clique em "Gerar Novas Sugestões" para analisar suas apostas.
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="bg-muted/30">
         <CardHeader>
