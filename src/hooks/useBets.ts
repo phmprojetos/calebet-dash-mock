@@ -3,6 +3,7 @@ import { isAxiosError } from "axios";
 import { betsService, CreateBetDTO, UpdateBetDTO } from "@/services/betsService";
 import { DEMO_USER_ID } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { Bet } from "@/lib/mockData";
 
 const getErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
@@ -32,12 +33,16 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
   // Mutation para criar aposta
   const createMutation = useMutation({
     mutationFn: (bet: Omit<CreateBetDTO, "user_id">) => betsService.createBet(bet),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["bets"] });
+    onSuccess: (newBet) => {
+      queryClient.setQueryData<Bet[]>(["bets", userId], (previous = []) => [newBet, ...previous]);
+      queryClient.invalidateQueries({ queryKey: ["bets", userId] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       toast({
         title: "Aposta criada",
-        description: "A nova aposta foi adicionada com sucesso.",
+        description:
+          newBet.event?.trim().length
+            ? `Aposta em "${newBet.event}" registrada com sucesso.`
+            : "A nova aposta foi adicionada com sucesso.",
       });
     },
     onError: (error) => {

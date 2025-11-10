@@ -12,6 +12,14 @@ const getValue = (source: RawBet, keys: string[]): unknown => {
   return undefined;
 };
 
+const ensureRecord = (value: unknown): RawBet => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as RawBet;
+  }
+
+  return {};
+};
+
 const normalizeResult = (value: unknown): Bet["result"] => {
   if (typeof value === "string") {
     const normalized = value.toLowerCase();
@@ -35,7 +43,8 @@ const normalizeNumber = (value: unknown): number => {
   return 0;
 };
 
-const normalizeBet = (bet: RawBet): Bet => {
+const normalizeBet = (rawBet: unknown): Bet => {
+  const bet = ensureRecord(rawBet);
   const rawId = getValue(bet, [
     "id",
     "bet_id",
@@ -82,7 +91,7 @@ const parseBetList = (payload: unknown): Bet[] => {
   const unwrapped = unwrapApiResponse<unknown>(payload);
 
   if (Array.isArray(unwrapped)) {
-    return unwrapped.map((item) => normalizeBet((item ?? {}) as RawBet));
+    return unwrapped.map((item) => normalizeBet(item ?? {}));
   }
 
   if (unwrapped && typeof unwrapped === "object") {
@@ -91,7 +100,7 @@ const parseBetList = (payload: unknown): Bet[] => {
     for (const key of ["bets", "items", "results", "data"]) {
       const value = container[key];
       if (Array.isArray(value)) {
-        return value.map((item) => normalizeBet((item ?? {}) as RawBet));
+        return value.map((item) => normalizeBet(item ?? {}));
       }
     }
   }
@@ -103,17 +112,17 @@ const parseSingleBet = (payload: unknown): Bet => {
   const unwrapped = unwrapApiResponse<unknown>(payload);
 
   if (Array.isArray(unwrapped)) {
-    return normalizeBet((unwrapped[0] ?? {}) as RawBet);
+    return normalizeBet(unwrapped[0] ?? {});
   }
 
   if (unwrapped && typeof unwrapped === "object") {
     const container = unwrapped as Record<string, unknown>;
     if (container.bet && typeof container.bet === "object") {
-      return normalizeBet(container.bet as RawBet);
+      return normalizeBet(container.bet);
     }
   }
 
-  return normalizeBet((unwrapped ?? {}) as RawBet);
+  return normalizeBet(unwrapped ?? {});
 };
 
 export interface CreateBetDTO {
