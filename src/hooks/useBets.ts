@@ -100,6 +100,7 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
     isLoading: betsQuery.isLoading,
     isError: betsQuery.isError,
     error: betsQuery.error,
+    refetch: betsQuery.refetch,
     createBet: createMutation.mutate,
     updateBet: updateMutation.mutate,
     deleteBet: deleteMutation.mutate,
