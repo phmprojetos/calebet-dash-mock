@@ -42,6 +42,18 @@ export default function Dashboard() {
 
   const filteredStats = stats;
 
+  const monthlyPerformanceChartData = useMemo(() => {
+    if (!filteredStats?.monthly_performance) {
+      return [];
+    }
+
+    return filteredStats.monthly_performance.map((entry) => ({
+      month: entry.month,
+      gains: entry.gains,
+      losses: Math.abs(entry.losses),
+    }));
+  }, [filteredStats]);
+
   const resultData = filteredStats
     ? [
         {
@@ -205,6 +217,51 @@ export default function Dashboard() {
               onClick={() => navigateToBets()}
             />
           </div>
+
+          {selectedPeriod === "all" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ganhos x Perdas Mensais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {monthlyPerformanceChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={monthlyPerformanceChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="losses"
+                        name="Perdas"
+                        fill="hsl(var(--destructive))"
+                        radius={[4, 4, 0, 0]}
+                        barSize={24}
+                      />
+                      <Bar
+                        dataKey="gains"
+                        name="Ganhos"
+                        fill="hsl(var(--success))"
+                        radius={[4, 4, 0, 0]}
+                        barSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum dado mensal disponível para exibição.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>

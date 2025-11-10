@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 
 import { api, DEMO_USER_ID, requestWithFallback, unwrapApiResponse } from "@/lib/api";
-import { MarketStats, Stats } from "@/lib/mockData";
+import { MarketStats, MonthlyPerformance, Stats } from "@/lib/mockData";
 
 type RawStats = Record<string, unknown>;
 
@@ -33,6 +33,62 @@ const normalizeMarketStats = (value: unknown): MarketStats => {
   };
 };
 
+const normalizeMonthlyPerformance = (value: unknown): MonthlyPerformance[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const toStringValue = (entry: Record<string, unknown>, keys: string[]): string => {
+    for (const key of keys) {
+      const candidate = entry[key];
+      if (typeof candidate === "string") {
+        return candidate;
+      }
+      if (typeof candidate === "number") {
+        return String(candidate);
+      }
+    }
+    return "";
+  };
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return null;
+      }
+
+      const entry = item as Record<string, unknown>;
+      const month = toStringValue(entry, ["month", "label", "period", "name"]);
+      const gains = toNumber(
+        entry.gains ??
+          entry.win ??
+          entry.wins ??
+          entry.positive ??
+          entry.profit ??
+          entry.total_profit ??
+          entry.victories
+      );
+      const losses = Math.abs(
+        toNumber(
+          entry.losses ??
+            entry.loss ??
+            entry.negative ??
+            entry.defeats ??
+            entry.perdas ??
+            entry.derrotas ??
+            entry.total_loss
+        )
+      );
+
+      if (!month) {
+        return null;
+      }
+
+      return { month, gains, losses } satisfies MonthlyPerformance;
+    })
+    .filter((item): item is MonthlyPerformance => Boolean(item));
+};
+
 const normalizeStats = (payload: unknown): Stats => {
   const raw = unwrapApiResponse<unknown>(payload);
   const data = toRecord(raw);
@@ -58,6 +114,7 @@ const normalizeStats = (payload: unknown): Stats => {
     avg_odd: toNumber(data.avg_odd),
     win_rate: toNumber(data.win_rate),
     roi: toNumber(data.roi),
+    monthly_performance: normalizeMonthlyPerformance(data.monthly_performance ?? data.by_month ?? data.monthly),
     by_result: {
       win: toNumber(byResult.win),
       loss: toNumber(byResult.loss),
