@@ -26,6 +26,12 @@ export interface MarketStats {
   roi: number;
 }
 
+export interface MonthlyPerformance {
+  month: string;
+  gains: number;
+  losses: number;
+}
+
 export interface Stats {
   total_bets: number;
   total_stake: number;
@@ -33,6 +39,7 @@ export interface Stats {
   avg_odd: number;
   win_rate: number;
   roi: number;
+  monthly_performance: MonthlyPerformance[];
   by_result: {
     win: number;
     loss: number;
@@ -54,6 +61,16 @@ export const mockStats: Stats = {
   avg_odd: 1.97,
   win_rate: 48,
   roi: -6.95,
+  monthly_performance: [
+    { month: "Jun/24", gains: 4820, losses: 3680 },
+    { month: "Jul/24", gains: 4510, losses: 4120 },
+    { month: "Ago/24", gains: 4985, losses: 3275 },
+    { month: "Set/24", gains: 5120, losses: 4390 },
+    { month: "Out/24", gains: 4760, losses: 5025 },
+    { month: "Nov/24", gains: 4380, losses: 5290 },
+    { month: "Dez/24", gains: 5210, losses: 3180 },
+    { month: "Jan/25", gains: 4850, losses: 3920 },
+  ],
   by_result: {
     win: 24,
     loss: 26,
