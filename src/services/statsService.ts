@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+
 import { api, DEMO_USER_ID, requestWithFallback, unwrapApiResponse } from "@/lib/api";
 import { MarketStats, Stats } from "@/lib/mockData";
 
@@ -77,18 +79,33 @@ export interface StatsParams {
   endDate?: Date;
 }
 
+export const formatStatsDateParam = (date?: Date): string | undefined => {
+  if (!date) {
+    return undefined;
+  }
+
+  const timestamp = date.getTime();
+  if (Number.isNaN(timestamp)) {
+    return undefined;
+  }
+
+  return format(date, "yyyy-MM-dd");
+};
+
 export const statsService = {
   // Buscar estatísticas do usuário
   getStats: async (params: StatsParams = {}): Promise<Stats> => {
     const userId = params.userId || DEMO_USER_ID;
     const queryParams: Record<string, string> = {};
 
-    if (params.startDate) {
-      queryParams.start_date = params.startDate.toISOString();
+    const startDate = formatStatsDateParam(params.startDate);
+    if (startDate) {
+      queryParams.start_date = startDate;
     }
 
-    if (params.endDate) {
-      queryParams.end_date = params.endDate.toISOString();
+    const endDate = formatStatsDateParam(params.endDate);
+    if (endDate) {
+      queryParams.end_date = endDate;
     }
 
     const response = await requestWithFallback([
