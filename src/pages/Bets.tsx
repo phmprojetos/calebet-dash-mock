@@ -51,9 +51,7 @@ export default function Bets() {
   const isInitializing = useRef(true);
   const isSyncingFromUrl = useRef(false);
   const lastSyncedSearch = useRef<string | null>(null);
-  const hasTriggeredFilterRefetch = useRef(false);
-
-  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting, refetch } = useBets();
+  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
 
   const markets = useMemo(() => {
     const uniqueMarkets = new Set(bets.map((bet) => bet.market));
@@ -192,19 +190,6 @@ export default function Bets() {
     setSearchParams,
     startDate,
   ]);
-
-  useEffect(() => {
-    if (isInitializing.current) {
-      return;
-    }
-
-    if (!hasTriggeredFilterRefetch.current) {
-      hasTriggeredFilterRefetch.current = true;
-      return;
-    }
-
-    refetch();
-  }, [endDate, marketFilter, refetch, resultFilter, selectedPeriod, startDate]);
 
   const getResultBadge = (result: Bet["result"]) => {
     const variants = {
