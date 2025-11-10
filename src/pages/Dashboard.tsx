@@ -11,6 +11,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { isAxiosError } from "axios";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { betsService } from "@/services/betsService";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
   const initialRange = useMemo(() => getDateRange("30days"), []);
@@ -41,6 +45,82 @@ export default function Dashboard() {
   };
 
   const filteredStats = stats;
+
+  const hasApiMonthlyPerformance =
+    (filteredStats?.monthly_performance?.length ?? 0) > 0;
+
+  const shouldFetchAllBets = selectedPeriod === "all" && !hasApiMonthlyPerformance;
+
+  const {
+    data: allBets,
+    isLoading: isLoadingAllBets,
+  } = useQuery({
+    queryKey: ["bets", "all"],
+    queryFn: () => betsService.getBets(),
+    enabled: shouldFetchAllBets,
+  });
+
+  const monthlyPerformanceChartData = useMemo(() => {
+    const apiMonthlyPerformance = filteredStats?.monthly_performance ?? [];
+
+    if (apiMonthlyPerformance.length > 0) {
+      return apiMonthlyPerformance.map((entry) => ({
+        month: entry.month,
+        gains: entry.gains,
+        losses: Math.abs(entry.losses),
+      }));
+    }
+
+    if (!allBets || allBets.length === 0) {
+      return [];
+    }
+
+    const monthlyMap = new Map<
+      string,
+      { month: string; gains: number; losses: number; timestamp: number }
+    >();
+
+    allBets.forEach((bet) => {
+      const betDate = new Date(bet.created_at);
+      const time = betDate.getTime();
+
+      if (Number.isNaN(time)) {
+        return;
+      }
+
+      const yearMonthKey = format(betDate, "yyyy-MM");
+      const labelRaw = format(betDate, "MMM/yy", { locale: ptBR });
+      const monthLabel = labelRaw.charAt(0).toUpperCase() + labelRaw.slice(1);
+      const existing = monthlyMap.get(yearMonthKey) ?? {
+        month: monthLabel,
+        gains: 0,
+        losses: 0,
+        timestamp: new Date(betDate.getFullYear(), betDate.getMonth(), 1).getTime(),
+      };
+
+      const profit = typeof bet.profit === "number" ? bet.profit : Number(bet.profit) || 0;
+
+      if (profit >= 0) {
+        existing.gains += profit;
+      } else {
+        existing.losses += Math.abs(profit);
+      }
+
+      existing.month = monthLabel;
+      monthlyMap.set(yearMonthKey, existing);
+    });
+
+    return Array.from(monthlyMap.values())
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .map((entry) => ({
+        month: entry.month,
+        gains: Math.round(entry.gains * 100) / 100,
+        losses: Math.round(entry.losses * 100) / 100,
+      }));
+  }, [allBets, filteredStats]);
+
+  const isMonthlyPerformanceLoading =
+    shouldFetchAllBets && isLoadingAllBets && monthlyPerformanceChartData.length === 0;
 
   const resultData = filteredStats
     ? [
@@ -205,6 +285,53 @@ export default function Dashboard() {
               onClick={() => navigateToBets()}
             />
           </div>
+
+          {selectedPeriod === "all" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Ganhos x Perdas Mensais</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isMonthlyPerformanceLoading ? (
+                  <Skeleton className="h-[320px] w-full" />
+                ) : monthlyPerformanceChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={monthlyPerformanceChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "var(--radius)",
+                        }}
+                      />
+                      <Legend />
+                      <Bar
+                        dataKey="losses"
+                        name="Perdas"
+                        fill="hsl(var(--destructive))"
+                        radius={[4, 4, 0, 0]}
+                        barSize={24}
+                      />
+                      <Bar
+                        dataKey="gains"
+                        name="Ganhos"
+                        fill="hsl(var(--success))"
+                        radius={[4, 4, 0, 0]}
+                        barSize={24}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nenhum dado mensal disponível para exibição.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
