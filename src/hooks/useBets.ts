@@ -1,7 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { isAxiosError } from "axios";
 import { betsService, CreateBetDTO, UpdateBetDTO } from "@/services/betsService";
 import { DEMO_USER_ID } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+
+const getErrorMessage = (error: unknown): string => {
+  if (isAxiosError(error)) {
+    const detail = error.response?.data as { detail?: string } | undefined;
+    if (detail?.detail) {
+      return detail.detail;
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return "Tente novamente.";
+};
 
 export const useBets = (userId: string = DEMO_USER_ID) => {
   const queryClient = useQueryClient();
@@ -24,10 +40,10 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
         description: "A nova aposta foi adicionada com sucesso.",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Erro ao criar aposta",
-        description: error.response?.data?.detail || "Tente novamente.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -35,8 +51,8 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
 
   // Mutation para atualizar aposta
   const updateMutation = useMutation({
-    mutationFn: ({ ordemId, data }: { ordemId: string; data: UpdateBetDTO }) =>
-      betsService.updateBet(ordemId, data),
+    mutationFn: ({ betId, data }: { betId: string; data: UpdateBetDTO }) =>
+      betsService.updateBet(betId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bets"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
@@ -45,10 +61,10 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
         description: "As alterações foram salvas com sucesso.",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Erro ao atualizar aposta",
-        description: error.response?.data?.detail || "Tente novamente.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },
@@ -56,7 +72,7 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
 
   // Mutation para deletar aposta
   const deleteMutation = useMutation({
-    mutationFn: (ordemId: string) => betsService.deleteBet(ordemId),
+    mutationFn: (betId: string) => betsService.deleteBet(betId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bets"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
@@ -65,10 +81,10 @@ export const useBets = (userId: string = DEMO_USER_ID) => {
         description: "A aposta foi removida com sucesso.",
       });
     },
-    onError: (error: any) => {
+    onError: (error) => {
       toast({
         title: "Erro ao excluir aposta",
-        description: error.response?.data?.detail || "Tente novamente.",
+        description: getErrorMessage(error),
         variant: "destructive",
       });
     },
