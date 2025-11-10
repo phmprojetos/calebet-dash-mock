@@ -49,6 +49,8 @@ export default function Bets() {
   const [marketFilter, setMarketFilter] = useState<string>("all");
   const [searchParams, setSearchParams] = useSearchParams();
   const isInitializing = useRef(true);
+  const isSyncingFromUrl = useRef(false);
+  const lastSyncedSearch = useRef<string | null>(null);
   const hasTriggeredFilterRefetch = useRef(false);
 
   const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting, refetch } = useBets();
@@ -80,6 +82,13 @@ export default function Bets() {
   const searchParamsString = searchParams.toString();
 
   useEffect(() => {
+    if (searchParamsString === lastSyncedSearch.current) {
+      isInitializing.current = false;
+      return;
+    }
+
+    isSyncingFromUrl.current = true;
+
     const params = new URLSearchParams(searchParamsString);
     const periodParam = params.get("period") as DateRangePeriod | null;
     const startParam = params.get("start");
@@ -138,11 +147,16 @@ export default function Bets() {
       setMarketFilter((current) => (current !== "all" ? "all" : current));
     }
 
+    lastSyncedSearch.current = searchParamsString;
     isInitializing.current = false;
+
+    setTimeout(() => {
+      isSyncingFromUrl.current = false;
+    }, 0);
   }, [searchParamsString]);
 
   useEffect(() => {
-    if (isInitializing.current) {
+    if (isInitializing.current || isSyncingFromUrl.current) {
       return;
     }
 
@@ -166,6 +180,7 @@ export default function Bets() {
     const currentSearch = searchParamsString;
 
     if (newSearch !== currentSearch) {
+      lastSyncedSearch.current = newSearch;
       setSearchParams(params, { replace: true });
     }
   }, [
