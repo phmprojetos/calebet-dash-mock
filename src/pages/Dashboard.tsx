@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { TrendingUp, TrendingDown, DollarSign, Target, Percent, BarChart3 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useStats } from "@/hooks/useStats";
-import { filterBetsByDateRange, getDateRange } from "@/lib/utils";
+import { getDateRange } from "@/lib/utils";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,16 +12,14 @@ export default function Dashboard() {
   const [startDate, setStartDate] = useState<Date>(() => getDateRange("all").start);
   const [endDate, setEndDate] = useState<Date>(() => getDateRange("all").end);
 
-  const { data: stats, isLoading, isError } = useStats();
+  const { data: stats, isLoading, isError } = useStats({ startDate, endDate });
 
   const handleRangeChange = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
+    setStartDate(new Date(start));
+    setEndDate(new Date(end));
   };
 
-  // Como o backend ainda não suporta filtro de datas, vamos manter o filtro local
-  // Quando o backend suportar, podemos passar as datas na query
-  const filteredStats = stats; // TODO: Implementar filtro de datas no backend
+  const filteredStats = stats;
 
   const resultData = filteredStats ? [
     { name: "Vitórias", value: filteredStats.by_result.win, color: "hsl(var(--success))" },

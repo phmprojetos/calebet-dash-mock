@@ -66,7 +66,11 @@ export function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
     setDateRange(range);
     if (range?.from && range?.to) {
       setSelectedPeriod("custom");
-      onRangeChange(range.from, range.to);
+      const start = new Date(range.from);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(range.to);
+      end.setHours(23, 59, 59, 999);
+      onRangeChange(start, end);
     }
   };
 
