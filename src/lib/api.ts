@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 
 // Configuração base da API
 export const API_BASE_URL = "https://calebet-backend.onrender.com";
@@ -14,6 +14,47 @@ export const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+export const unwrapApiResponse = <T>(payload: unknown): T => {
+  if (payload === null || payload === undefined) {
+    return payload as T;
+  }
+
+  if (Array.isArray(payload)) {
+    return payload as T;
+  }
+
+  if (typeof payload === "object") {
+    const container = payload as Record<string, unknown>;
+    for (const key of ["data", "result", "results", "items", "value", "payload"]) {
+      if (key in container) {
+        return container[key] as T;
+      }
+    }
+  }
+
+  return payload as T;
+};
+
+export const requestWithFallback = async <T>(
+  requests: Array<() => Promise<T>>
+): Promise<T> => {
+  let lastError: unknown;
+
+  for (const request of requests) {
+    try {
+      return await request();
+    } catch (error) {
+      lastError = error;
+
+      if (!isAxiosError(error) || error.response?.status !== 404) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError ?? new Error("All API requests failed");
+};
 
 // Interceptor para logging de erros
 api.interceptors.response.use(

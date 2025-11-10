@@ -8,9 +8,17 @@ interface StatCardProps {
   icon: LucideIcon;
   trend?: "positive" | "negative" | "neutral";
   subtitle?: string;
+  onClick?: () => void;
 }
 
-export function StatCard({ title, value, icon: Icon, trend = "neutral", subtitle }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  icon: Icon,
+  trend = "neutral",
+  subtitle,
+  onClick,
+}: StatCardProps) {
   const trendColor = {
     positive: "text-success",
     negative: "text-destructive",
@@ -18,7 +26,23 @@ export function StatCard({ title, value, icon: Icon, trend = "neutral", subtitle
   };
 
   return (
-    <Card className="border-border bg-card hover:bg-card/80 transition-colors">
+    <Card
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      className={cn(
+        "border-border bg-card transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+        onClick && "cursor-pointer hover:bg-card/80"
+      )}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <Icon className={cn("h-5 w-5", trendColor[trend])} />

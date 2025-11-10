@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -13,20 +13,52 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-type Period = "today" | "7days" | "30days" | "all" | "custom";
+export type DateRangePeriod = "today" | "7days" | "30days" | "all" | "custom";
 
 interface DateRangeFilterProps {
   onRangeChange: (startDate: Date, endDate: Date) => void;
+  selectedPeriod?: DateRangePeriod;
+  onPeriodChange?: (period: DateRangePeriod) => void;
+  customRange?: { startDate: Date; endDate: Date };
 }
 
-export function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<Period>("all");
+export function DateRangeFilter({
+  onRangeChange,
+  selectedPeriod,
+  onPeriodChange,
+  customRange,
+}: DateRangeFilterProps) {
+  const [internalSelectedPeriod, setInternalSelectedPeriod] = useState<DateRangePeriod>(selectedPeriod ?? "all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
-  const handlePeriodClick = (period: Period) => {
-    setSelectedPeriod(period);
+  const currentPeriod = selectedPeriod ?? internalSelectedPeriod;
+
+  useEffect(() => {
+    if (selectedPeriod !== undefined) {
+      setInternalSelectedPeriod(selectedPeriod);
+
+      if (selectedPeriod !== "custom") {
+        setDateRange(undefined);
+      }
+    }
+  }, [selectedPeriod]);
+
+  useEffect(() => {
+    if (!customRange || currentPeriod !== "custom") {
+      return;
+    }
+
+    setDateRange({ from: customRange.startDate, to: customRange.endDate });
+  }, [customRange, currentPeriod]);
+
+  const handlePeriodChange = (period: Exclude<DateRangePeriod, "custom">) => {
+    if (selectedPeriod === undefined) {
+      setInternalSelectedPeriod(period);
+    }
+
+    setDateRange(undefined);
     const now = new Date();
-    
+
     switch (period) {
       case "today": {
         const start = new Date(now.setHours(0, 0, 0, 0));
@@ -60,47 +92,64 @@ export function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
         break;
       }
     }
+
+    onPeriodChange?.(period);
+  };
+
+  const handlePeriodClick = (period: DateRangePeriod) => {
+    if (period === "custom") {
+      return;
+    }
+
+    handlePeriodChange(period);
   };
 
   const handleCustomRangeSelect = (range: DateRange | undefined) => {
     setDateRange(range);
     if (range?.from && range?.to) {
-      setSelectedPeriod("custom");
-      onRangeChange(range.from, range.to);
+      if (selectedPeriod === undefined) {
+        setInternalSelectedPeriod("custom");
+      }
+      onPeriodChange?.("custom");
+      const start = new Date(range.from);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(range.to);
+      end.setHours(23, 59, 59, 999);
+      onRangeChange(start, end);
     }
   };
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
       <Button
-        variant={selectedPeriod === "today" ? "default" : "outline"}
+        variant={currentPeriod === "today" ? "default" : "outline"}
         size="sm"
         onClick={() => handlePeriodClick("today")}
         className="min-w-[80px]"
       >
         Hoje
       </Button>
-      
+
       <Button
-        variant={selectedPeriod === "7days" ? "default" : "outline"}
+        variant={currentPeriod === "7days" ? "default" : "outline"}
         size="sm"
         onClick={() => handlePeriodClick("7days")}
         className="min-w-[80px]"
       >
         7 dias
       </Button>
-      
+
       <Button
-        variant={selectedPeriod === "30days" ? "default" : "outline"}
+        variant={currentPeriod === "30days" ? "default" : "outline"}
         size="sm"
         onClick={() => handlePeriodClick("30days")}
         className="min-w-[80px]"
       >
         30 dias
       </Button>
-      
+
       <Button
-        variant={selectedPeriod === "all" ? "default" : "outline"}
+        variant={currentPeriod === "all" ? "default" : "outline"}
         size="sm"
         onClick={() => handlePeriodClick("all")}
         className="min-w-[80px]"
@@ -111,7 +160,7 @@ export function DateRangeFilter({ onRangeChange }: DateRangeFilterProps) {
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            variant={selectedPeriod === "custom" ? "default" : "outline"}
+            variant={currentPeriod === "custom" ? "default" : "outline"}
             size="sm"
             className={cn("min-w-[240px] justify-start text-left font-normal")}
           >
