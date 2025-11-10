@@ -141,10 +141,13 @@ export const betsService = {
   // Listar todas as apostas
   getBets: async (userId: string = DEMO_USER_ID): Promise<Bet[]> =>
     requestWithFallback<Bet[]>([
-      () => api.get(`/users/${userId}/bets`).then((response) => parseBetList(response.data)),
       () =>
         api
           .get(`/bets/`, { params: { user_id: userId } })
+          .then((response) => parseBetList(response.data)),
+      () =>
+        api
+          .get(`/users/${userId}/bets`)
           .then((response) => parseBetList(response.data)),
     ]),
 
@@ -157,11 +160,12 @@ export const betsService = {
     };
 
     return requestWithFallback<Bet>([
+      () => api.post(`/bets/`, payload).then((response) => parseSingleBet(response.data)),
       () =>
         api
           .post(`/users/${DEMO_USER_ID}/bets`, payload)
           .then((response) => parseSingleBet(response.data)),
-      () => api.post(`/bets/`, payload).then((response) => parseSingleBet(response.data)),
+      () => api.post(`/ingest`, payload).then((response) => parseSingleBet(response.data)),
     ]);
   },
 
@@ -170,19 +174,19 @@ export const betsService = {
     requestWithFallback<Bet>([
       () =>
         api
-          .patch(`/users/${DEMO_USER_ID}/bets/${betId}`, data)
+          .patch(`/bets/${betId}`, data)
           .then((response) => parseSingleBet(response.data)),
       () =>
         api
-          .patch(`/bets/${betId}`, data)
+          .patch(`/users/${DEMO_USER_ID}/bets/${betId}`, data)
           .then((response) => parseSingleBet(response.data)),
     ]),
 
   // Deletar aposta
   deleteBet: async (betId: string): Promise<void> => {
     await requestWithFallback<unknown>([
-      () => api.delete(`/users/${DEMO_USER_ID}/bets/${betId}`),
       () => api.delete(`/bets/${betId}`),
+      () => api.delete(`/users/${DEMO_USER_ID}/bets/${betId}`),
     ]);
   },
 };
