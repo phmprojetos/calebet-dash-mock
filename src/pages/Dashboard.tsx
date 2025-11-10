@@ -1,18 +1,37 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, DollarSign, Target, Percent, BarChart3 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useStats } from "@/hooks/useStats";
 import { getDateRange } from "@/lib/utils";
-import { DateRangeFilter } from "@/components/DateRangeFilter";
+import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { isAxiosError } from "axios";
 
 export default function Dashboard() {
-  const [startDate, setStartDate] = useState<Date>(() => getDateRange("all").start);
-  const [endDate, setEndDate] = useState<Date>(() => getDateRange("all").end);
+  const initialRange = useMemo(() => getDateRange("30days"), []);
+  const [startDate, setStartDate] = useState<Date>(initialRange.start);
+  const [endDate, setEndDate] = useState<Date>(initialRange.end);
+  const [selectedPeriod, setSelectedPeriod] = useState<DateRangePeriod>("30days");
+  const [showNoBetsModal, setShowNoBetsModal] = useState(false);
 
-  const { data: stats, isLoading, isError } = useStats({ startDate, endDate });
+  const { data: stats, isLoading, isError, error } = useStats({ startDate, endDate });
+
+  useEffect(() => {
+    if (isError && isAxiosError(error) && error.response?.status === 404) {
+      setShowNoBetsModal(true);
+
+      if (selectedPeriod !== "30days") {
+        const range = getDateRange("30days");
+        setSelectedPeriod("30days");
+        setStartDate(range.start);
+        setEndDate(range.end);
+      }
+    }
+  }, [isError, error, selectedPeriod]);
 
   const handleRangeChange = (start: Date, end: Date) => {
     setStartDate(new Date(start));
@@ -33,7 +52,9 @@ export default function Dashboard() {
     winRate: data.win_rate,
   })) : [];
 
-  if (isError) {
+  const isNoBetsError = isError && isAxiosError(error) && error.response?.status === 404;
+
+  if (isError && !isNoBetsError) {
     return (
       <div className="space-y-6">
         <div>
@@ -51,7 +72,25 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Visão geral das suas apostas esportivas</p>
       </div>
 
-      <DateRangeFilter onRangeChange={handleRangeChange} />
+      <DateRangeFilter
+        onRangeChange={handleRangeChange}
+        selectedPeriod={selectedPeriod}
+        onPeriodChange={setSelectedPeriod}
+      />
+
+      <Dialog open={showNoBetsModal} onOpenChange={setShowNoBetsModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Não há bets nesse período</DialogTitle>
+            <DialogDescription>
+              Exibindo as apostas dos últimos 30 dias.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowNoBetsModal(false)}>Entendi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
