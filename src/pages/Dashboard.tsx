@@ -207,8 +207,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral das suas apostas esportivas</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Visão geral das suas apostas esportivas</p>
       </div>
 
       <DateRangeFilter
@@ -233,14 +233,14 @@ export default function Dashboard() {
       </Dialog>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
       ) : filteredStats ? (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             <StatCard
               title="Total de Apostas"
               value={filteredStats.total_bets}
@@ -289,7 +289,7 @@ export default function Dashboard() {
           {selectedPeriod === "all" && (
             <Card>
               <CardHeader>
-                <CardTitle>Ganhos x Perdas Mensais</CardTitle>
+                <CardTitle className="text-base md:text-lg">Ganhos x Perdas Mensais</CardTitle>
               </CardHeader>
               <CardContent>
                 {isMonthlyPerformanceLoading ? (
@@ -333,10 +333,10 @@ export default function Dashboard() {
             </Card>
           )}
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Distribuição por Resultado</CardTitle>
+                <CardTitle className="text-base md:text-lg">Distribuição por Resultado</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -368,7 +368,7 @@ export default function Dashboard() {
 
             <Card>
               <CardHeader>
-                <CardTitle>ROI por Mercado</CardTitle>
+                <CardTitle className="text-base md:text-lg">ROI por Mercado</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>

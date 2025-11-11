@@ -56,14 +56,14 @@ export default function Insights() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Insights da IA</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Insights da IA</h1>
+          <p className="text-sm md:text-base text-muted-foreground">
             Análises automáticas das suas apostas com sugestões personalizadas
           </p>
         </div>
-        <Button onClick={handleGenerateNew} disabled={isRefetching}>
+        <Button onClick={handleGenerateNew} disabled={isRefetching} className="w-full md:w-auto">
           {isRefetching ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -89,13 +89,13 @@ export default function Insights() {
           {insights.map((insight) => (
             <Card key={insight.id} className={cn(getInsightColor(insight.type))}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-3 text-lg">
-                  <Lightbulb className={cn("h-6 w-6", getIconColor(insight.type))} />
+                <CardTitle className="flex items-center gap-3 text-base md:text-lg">
+                  <Lightbulb className={cn("h-5 w-5 md:h-6 md:w-6", getIconColor(insight.type))} />
                   <span>Insight Automático</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-base leading-relaxed">{insight.message}</p>
+                <p className="text-sm md:text-base leading-relaxed">{insight.message}</p>
               </CardContent>
             </Card>
           ))}
@@ -110,9 +110,9 @@ export default function Insights() {
 
       <Card className="bg-muted/30">
         <CardHeader>
-          <CardTitle className="text-base">💡 Como funciona?</CardTitle>
+          <CardTitle className="text-sm md:text-base">💡 Como funciona?</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
+        <CardContent className="space-y-2 text-xs md:text-sm text-muted-foreground">
           <p>
             Nossa IA analisa continuamente suas apostas e identifica padrões de sucesso e áreas de
             melhoria.

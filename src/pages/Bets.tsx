@@ -258,12 +258,12 @@ export default function Bets() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Minhas Apostas</h1>
-          <p className="text-muted-foreground">Gerencie todas as suas apostas</p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Minhas Apostas</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Gerencie todas as suas apostas</p>
         </div>
-        <Button onClick={() => setDialogOpen(true)}>
+        <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Nova Aposta
         </Button>
@@ -317,19 +317,19 @@ export default function Bets() {
         </div>
       </div>
 
-      <div className="rounded-md border border-border bg-card">
+      <div className="rounded-md border border-border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Evento</TableHead>
-              <TableHead>Mercado</TableHead>
-              <TableHead>Odd</TableHead>
-              <TableHead>Stake</TableHead>
-              <TableHead>Resultado</TableHead>
-              <TableHead>Lucro</TableHead>
-              <TableHead>Data</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              <TableHead className="text-xs md:text-sm">ID</TableHead>
+              <TableHead className="text-xs md:text-sm min-w-[150px]">Evento</TableHead>
+              <TableHead className="text-xs md:text-sm min-w-[120px]">Mercado</TableHead>
+              <TableHead className="text-xs md:text-sm">Odd</TableHead>
+              <TableHead className="text-xs md:text-sm">Stake</TableHead>
+              <TableHead className="text-xs md:text-sm">Resultado</TableHead>
+              <TableHead className="text-xs md:text-sm">Lucro</TableHead>
+              <TableHead className="text-xs md:text-sm">Data</TableHead>
+              <TableHead className="text-right text-xs md:text-sm">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

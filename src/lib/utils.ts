@@ -105,6 +105,7 @@ export function calculateStats(bets: Bet[]): Stats {
     avg_odd,
     win_rate,
     roi,
+    monthly_performance: [],
     by_result,
     by_market,
     best_market,

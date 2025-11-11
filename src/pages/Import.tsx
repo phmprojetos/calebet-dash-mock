@@ -58,14 +58,14 @@ export default function Import() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Importar CSV</h1>
-        <p className="text-muted-foreground">Importe suas apostas em lote através de arquivo CSV</p>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Importar CSV</h1>
+        <p className="text-sm md:text-base text-muted-foreground">Importe suas apostas em lote através de arquivo CSV</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload de Arquivo</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-base md:text-lg">Upload de Arquivo</CardTitle>
+          <CardDescription className="text-xs md:text-sm">
             Selecione um arquivo CSV com suas apostas. O arquivo deve conter as colunas: evento,
             mercado, odd, stake, resultado
           </CardDescription>

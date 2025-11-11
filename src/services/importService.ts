@@ -50,7 +50,10 @@ export const importService = {
     const payloadRecord = toRecord(payload);
 
     if (typeof payloadRecord["message"] === "string" && typeof payloadRecord["imported_count"] === "number") {
-      return payloadRecord as ImportResponse;
+      return {
+        message: payloadRecord["message"],
+        imported_count: payloadRecord["imported_count"]
+      };
     }
 
     const detail = payloadRecord["detail"];
