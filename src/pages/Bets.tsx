@@ -73,7 +73,11 @@ export default function Bets() {
   );
 
   const markets = useMemo(() => {
-    const uniqueMarkets = new Set(sortedBets.map((bet) => bet.market));
+    const uniqueMarkets = new Set(
+      sortedBets
+        .map((bet) => bet.market?.trim())
+        .filter((market): market is string => Boolean(market)),
+    );
     if (marketFilter !== "all") {
       uniqueMarkets.add(marketFilter);
     }
@@ -158,7 +162,7 @@ export default function Bets() {
       setResultFilter((current) => (current !== "all" ? "all" : current));
     }
 
-    if (marketParam) {
+    if (marketParam?.trim()) {
       setMarketFilter((current) => (current !== marketParam ? marketParam : current));
     } else {
       setMarketFilter((current) => (current !== "all" ? "all" : current));
