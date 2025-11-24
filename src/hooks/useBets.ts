@@ -34,7 +34,8 @@ export const useBets = () => {
 
   // Mutation para criar aposta
   const createMutation = useMutation({
-    mutationFn: (bet: Omit<CreateBetDTO, "user_id">) => betsService.createBet(bet),
+    mutationFn: (bet: Omit<CreateBetDTO, "user_id">) =>
+      betsService.createBet({ ...bet, user_id: userId || undefined }),
     onSuccess: (newBet) => {
       queryClient.setQueryData<Bet[]>(["bets", userId], (previous = []) => [newBet, ...previous]);
       queryClient.invalidateQueries({ queryKey: ["bets", userId] });
