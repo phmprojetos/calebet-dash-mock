@@ -1,17 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { formatStatsDateParam, statsService, StatsParams } from "@/services/statsService";
-import { DEMO_USER_ID } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export const useStats = (params: StatsParams = {}) => {
+  const { user } = useAuth();
+  const userId = user?.id || "";
+  
   return useQuery({
     queryKey: [
       "stats",
-      params.userId || DEMO_USER_ID,
+      userId,
       formatStatsDateParam(params.startDate),
       formatStatsDateParam(params.endDate),
-
     ],
-    queryFn: () => statsService.getStats(params),
-    staleTime: 1000 * 60 * 5, // 5 minutos
+    queryFn: () => statsService.getStats({ ...params, userId }),
+    staleTime: 1000 * 60 * 5,
+    enabled: !!userId,
   });
 };

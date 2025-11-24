@@ -1,8 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { isAxiosError } from "axios";
 import { betsService, CreateBetDTO, UpdateBetDTO } from "@/services/betsService";
-import { DEMO_USER_ID } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Bet } from "@/lib/mockData";
 
 const getErrorMessage = (error: unknown): string => {
@@ -20,9 +20,11 @@ const getErrorMessage = (error: unknown): string => {
   return "Tente novamente.";
 };
 
-export const useBets = (userId: string = DEMO_USER_ID) => {
+export const useBets = () => {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const userId = user?.id || "";
 
   // Query para listar apostas
   const betsQuery = useQuery({
