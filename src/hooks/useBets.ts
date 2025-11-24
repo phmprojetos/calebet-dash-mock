@@ -105,6 +105,7 @@ export const useBets = () => {
     error: betsQuery.error,
     refetch: betsQuery.refetch,
     createBet: createMutation.mutate,
+    createBetAsync: createMutation.mutateAsync,
     updateBet: updateMutation.mutate,
     deleteBet: deleteMutation.mutate,
     isCreating: createMutation.isPending,
