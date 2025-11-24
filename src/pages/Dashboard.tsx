@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { TrendingUp, TrendingDown, DollarSign, Target, Percent, BarChart3 } from "lucide-react";
 import { StatCard } from "@/components/StatCard";
 import { useStats } from "@/hooks/useStats";
+import { useAuth } from "@/contexts/AuthContext";
 import { getDateRange } from "@/lib/utils";
 import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export default function Dashboard() {
+  const { user } = useAuth();
   const initialRange = useMemo(() => getDateRange("30days"), []);
   const [startDate, setStartDate] = useState<Date>(initialRange.start);
   const [endDate, setEndDate] = useState<Date>(initialRange.end);
@@ -55,9 +57,9 @@ export default function Dashboard() {
     data: allBets,
     isLoading: isLoadingAllBets,
   } = useQuery({
-    queryKey: ["bets", "all"],
-    queryFn: () => betsService.getBets(),
-    enabled: shouldFetchAllBets,
+    queryKey: ["bets", user?.id || ""],
+    queryFn: () => betsService.getBets(user?.id || ""),
+    enabled: shouldFetchAllBets && !!user?.id,
   });
 
   const monthlyPerformanceChartData = useMemo(() => {

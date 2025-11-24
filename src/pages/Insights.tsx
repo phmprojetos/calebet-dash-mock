@@ -1,19 +1,20 @@
 import { Lightbulb, Sparkles, Loader2 } from "lucide-react";
 import { useInsights } from "@/hooks/useInsights";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
-import { DEMO_USER_ID } from "@/lib/api";
 
 export default function Insights() {
+  const { user } = useAuth();
   const { data: insights, isLoading, isError, refetch, isRefetching } = useInsights();
   const queryClient = useQueryClient();
 
   const handleGenerateNew = () => {
     // Força refresh dos insights
-    queryClient.invalidateQueries({ queryKey: ["insights", DEMO_USER_ID] });
+    queryClient.invalidateQueries({ queryKey: ["insights", user?.id || ""] });
     refetch();
   };
 
