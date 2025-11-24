@@ -148,23 +148,27 @@ export interface UpdateBetDTO {
 
 export const betsService = {
   // Listar todas as apostas
-  getBets: async (userId: string = DEMO_USER_ID): Promise<Bet[]> =>
-    requestWithFallback<Bet[]>([
+  getBets: async (userId: string = DEMO_USER_ID): Promise<Bet[]> => {
+    const targetUserId = userId || DEMO_USER_ID;
+
+    return requestWithFallback<Bet[]>([
       () =>
         api
-          .get(`/bets/`, { params: { user_id: userId } })
+          .get(`/bets/`, { params: { user_id: targetUserId } })
           .then((response) => parseBetList(response.data)),
       () =>
         api
-          .get(`/users/${userId}/bets`)
+          .get(`/users/${targetUserId}/bets`)
           .then((response) => parseBetList(response.data)),
-    ]),
+    ]);
+  },
 
   // Criar nova aposta
-  createBet: async (bet: Omit<CreateBetDTO, "user_id">): Promise<Bet> => {
+  createBet: async (bet: Omit<CreateBetDTO, "user_id"> & { user_id?: string }): Promise<Bet> => {
+    const targetUserId = bet.user_id || DEMO_USER_ID;
     const payload = {
       ...bet,
-      user_id: DEMO_USER_ID,
+      user_id: targetUserId,
       source: bet.source ?? "dashboard",
     };
 
@@ -172,7 +176,7 @@ export const betsService = {
       () => api.post(`/bets/`, payload).then((response) => parseSingleBet(response.data)),
       () =>
         api
-          .post(`/users/${DEMO_USER_ID}/bets`, payload)
+          .post(`/users/${targetUserId}/bets`, payload)
           .then((response) => parseSingleBet(response.data)),
       () => api.post(`/ingest`, payload).then((response) => parseSingleBet(response.data)),
     ]);
