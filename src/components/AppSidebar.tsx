@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Upload, Lightbulb, Settings } from "lucide-react";
+import { LayoutDashboard, FileText, Upload, Lightbulb, Settings, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -9,8 +9,11 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -22,6 +25,7 @@ const menuItems = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
+  const { signOut } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -54,6 +58,16 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <Button
+          variant="ghost"
+          className="w-full justify-start"
+          onClick={signOut}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          {open && <span>Sair</span>}
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
