@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Bet } from "@/lib/mockData";
 import { useBets } from "@/hooks/useBets";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -25,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
-import { getDateRange } from "@/lib/utils";
+import { filterBetsByDateRange, getDateRange } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -51,18 +52,32 @@ export default function Bets() {
   const isInitializing = useRef(true);
   const isSyncingFromUrl = useRef(false);
   const lastSyncedSearch = useRef<string | null>(null);
-  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
+  const { bets, isLoading, createBetAsync, updateBet, deleteBet, isDeleting } = useBets();
+
+  const sortedBets = useMemo(
+    () =>
+      [...bets].sort(
+        (first, second) =>
+          new Date(second.created_at).getTime() - new Date(first.created_at).getTime(),
+      ),
+    [bets],
+  );
+
+  const last30DaysBets = useMemo(
+    () => filterBetsByDateRange(sortedBets, initialRange.start, initialRange.end),
+    [initialRange.end, initialRange.start, sortedBets],
+  );
 
   const markets = useMemo(() => {
-    const uniqueMarkets = new Set(bets.map((bet) => bet.market));
+    const uniqueMarkets = new Set(sortedBets.map((bet) => bet.market));
     if (marketFilter !== "all") {
       uniqueMarkets.add(marketFilter);
     }
     return Array.from(uniqueMarkets).sort((a, b) => a.localeCompare(b));
-  }, [bets, marketFilter]);
+  }, [marketFilter, sortedBets]);
 
   const filteredBets = useMemo(() => {
-    return bets.filter((bet) => {
+    return sortedBets.filter((bet) => {
       const createdAt = new Date(bet.created_at);
       const isWithinRange = createdAt >= startDate && createdAt <= endDate;
       const matchesResult = resultFilter === "all" || bet.result === resultFilter;
@@ -70,7 +85,7 @@ export default function Bets() {
 
       return isWithinRange && matchesResult && matchesMarket;
     });
-  }, [bets, endDate, marketFilter, resultFilter, startDate]);
+  }, [endDate, marketFilter, resultFilter, sortedBets, startDate]);
 
   const handleDateRangeChange = (start: Date, end: Date) => {
     setStartDate(new Date(start));
@@ -228,7 +243,7 @@ export default function Bets() {
     setDialogOpen(true);
   };
 
-  const handleSave = (bet: Bet) => {
+  const handleSave = async (bet: Bet) => {
     if (editingBet) {
       updateBet({
         betId: bet.id,
@@ -242,15 +257,28 @@ export default function Bets() {
         },
       });
     } else {
-      createBet({
-        event: bet.event,
-        market: bet.market,
-        odd: bet.odd,
-        stake: bet.stake,
-        result: bet.result,
-        profit: bet.profit,
-        created_at: bet.created_at,
-      });
+      try {
+        await toast.promise(
+          createBetAsync({
+            event: bet.event,
+            market: bet.market,
+            odd: bet.odd,
+            stake: bet.stake,
+            result: bet.result,
+            profit: bet.profit,
+            created_at: bet.created_at,
+          }),
+          {
+            loading: "Registrando aposta...",
+            success: bet.event?.trim()
+              ? `Aposta em "${bet.event}" criada com sucesso.`
+              : "Aposta criada com sucesso.",
+            error: "Não foi possível criar a aposta. Tente novamente.",
+          },
+        );
+      } catch (error) {
+        console.error(error);
+      }
     }
     setEditingBet(undefined);
     setDialogOpen(false);
@@ -262,6 +290,9 @@ export default function Bets() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Minhas Apostas</h1>
           <p className="text-sm md:text-base text-muted-foreground">Gerencie todas as suas apostas</p>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Exibindo {last30DaysBets.length} apostas registradas nos últimos 30 dias por padrão.
+          </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" />
