@@ -78,9 +78,11 @@ export default function Bets() {
         .map((bet) => bet.market?.trim())
         .filter((market): market is string => Boolean(market)),
     );
-    if (marketFilter !== "all") {
-      uniqueMarkets.add(marketFilter);
+
+    if (marketFilter !== "all" && marketFilter.trim()) {
+      uniqueMarkets.add(marketFilter.trim());
     }
+
     return Array.from(uniqueMarkets).sort((a, b) => a.localeCompare(b));
   }, [marketFilter, sortedBets]);
 
@@ -351,7 +353,10 @@ export default function Bets() {
           <Label htmlFor="market-filter" className="text-sm font-medium">
             Mercado
           </Label>
-          <Select value={marketFilter} onValueChange={(value) => setMarketFilter(value)}>
+          <Select
+            value={marketFilter}
+            onValueChange={(value) => setMarketFilter(value.trim() ? value : "all")}
+          >
             <SelectTrigger id="market-filter" className="w-[220px]">
               <SelectValue placeholder="Todos os mercados" />
             </SelectTrigger>
