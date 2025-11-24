@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Bet } from "@/lib/mockData";
 import { useBets } from "@/hooks/useBets";
+import { toast } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -25,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
-import { getDateRange } from "@/lib/utils";
+import { filterBetsByDateRange, getDateRange } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -34,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 export default function Bets() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -48,21 +49,43 @@ export default function Bets() {
   const [resultFilter, setResultFilter] = useState<Bet["result"] | "all">("all");
   const [marketFilter, setMarketFilter] = useState<string>("all");
   const [searchParams, setSearchParams] = useSearchParams();
+  const [pendingConfirmationBet, setPendingConfirmationBet] = useState<Bet | undefined>();
+  const [confirmationDialogOpen, setConfirmationDialogOpen] = useState(false);
   const isInitializing = useRef(true);
   const isSyncingFromUrl = useRef(false);
   const lastSyncedSearch = useRef<string | null>(null);
-  const { bets, isLoading, createBet, updateBet, deleteBet, isDeleting } = useBets();
+  const navigate = useNavigate();
+  const { bets, isLoading, createBetAsync, updateBet, deleteBet, isDeleting, isCreating } =
+    useBets();
+
+  const sortedBets = useMemo(
+    () =>
+      [...bets].sort(
+        (first, second) =>
+          new Date(second.created_at).getTime() - new Date(first.created_at).getTime(),
+      ),
+    [bets],
+  );
+
+  const last30DaysBets = useMemo(
+    () => filterBetsByDateRange(sortedBets, initialRange.start, initialRange.end),
+    [initialRange.end, initialRange.start, sortedBets],
+  );
 
   const markets = useMemo(() => {
-    const uniqueMarkets = new Set(bets.map((bet) => bet.market));
+    const uniqueMarkets = new Set(
+      sortedBets
+        .map((bet) => bet.market?.trim())
+        .filter((market): market is string => Boolean(market)),
+    );
     if (marketFilter !== "all") {
       uniqueMarkets.add(marketFilter);
     }
     return Array.from(uniqueMarkets).sort((a, b) => a.localeCompare(b));
-  }, [bets, marketFilter]);
+  }, [marketFilter, sortedBets]);
 
   const filteredBets = useMemo(() => {
-    return bets.filter((bet) => {
+    return sortedBets.filter((bet) => {
       const createdAt = new Date(bet.created_at);
       const isWithinRange = createdAt >= startDate && createdAt <= endDate;
       const matchesResult = resultFilter === "all" || bet.result === resultFilter;
@@ -70,7 +93,7 @@ export default function Bets() {
 
       return isWithinRange && matchesResult && matchesMarket;
     });
-  }, [bets, endDate, marketFilter, resultFilter, startDate]);
+  }, [endDate, marketFilter, resultFilter, sortedBets, startDate]);
 
   const handleDateRangeChange = (start: Date, end: Date) => {
     setStartDate(new Date(start));
@@ -139,7 +162,7 @@ export default function Bets() {
       setResultFilter((current) => (current !== "all" ? "all" : current));
     }
 
-    if (marketParam) {
+    if (marketParam?.trim()) {
       setMarketFilter((current) => (current !== marketParam ? marketParam : current));
     } else {
       setMarketFilter((current) => (current !== "all" ? "all" : current));
@@ -242,18 +265,42 @@ export default function Bets() {
         },
       });
     } else {
-      createBet({
-        event: bet.event,
-        market: bet.market,
-        odd: bet.odd,
-        stake: bet.stake,
-        result: bet.result,
-        profit: bet.profit,
-        created_at: bet.created_at,
-      });
+      setPendingConfirmationBet(bet);
+      setConfirmationDialogOpen(true);
     }
     setEditingBet(undefined);
     setDialogOpen(false);
+  };
+
+  const handleConfirmCreate = async () => {
+    if (!pendingConfirmationBet) return;
+
+    try {
+      await toast.promise(
+        createBetAsync({
+          event: pendingConfirmationBet.event,
+          market: pendingConfirmationBet.market,
+          odd: pendingConfirmationBet.odd,
+          stake: pendingConfirmationBet.stake,
+          result: pendingConfirmationBet.result,
+          profit: pendingConfirmationBet.profit,
+          created_at: pendingConfirmationBet.created_at,
+        }),
+        {
+          loading: "Confirmando aposta...",
+          success: pendingConfirmationBet.event?.trim()
+            ? `Aposta em "${pendingConfirmationBet.event}" criada com sucesso.`
+            : "Aposta criada com sucesso.",
+          error: "Não foi possível criar a aposta. Tente novamente.",
+        },
+      );
+
+      navigate("/bets", { replace: true });
+      setConfirmationDialogOpen(false);
+      setPendingConfirmationBet(undefined);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -262,6 +309,9 @@ export default function Bets() {
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Minhas Apostas</h1>
           <p className="text-sm md:text-base text-muted-foreground">Gerencie todas as suas apostas</p>
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Exibindo {last30DaysBets.length} apostas registradas nos últimos 30 dias por padrão.
+          </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
           <Plus className="mr-2 h-4 w-4" />
@@ -398,6 +448,75 @@ export default function Bets() {
         bet={editingBet}
         onSave={handleSave}
       />
+
+      <AlertDialog
+        open={confirmationDialogOpen}
+        onOpenChange={(open) => {
+          setConfirmationDialogOpen(open);
+          if (!open) setPendingConfirmationBet(undefined);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar aposta</AlertDialogTitle>
+            <AlertDialogDescription>
+              Confirme os detalhes antes de registrar a aposta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Evento</span>
+              <span className="font-medium text-right">{pendingConfirmationBet?.event}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Mercado</span>
+              <span className="font-medium text-right">{pendingConfirmationBet?.market}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Odd</span>
+              <span className="font-semibold">{pendingConfirmationBet?.odd.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Stake</span>
+              <span className="font-semibold">
+                R$ {pendingConfirmationBet?.stake.toLocaleString("pt-BR")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Resultado</span>
+              <span className="font-semibold capitalize">{pendingConfirmationBet?.result}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Lucro</span>
+              <span
+                className={
+                  (pendingConfirmationBet?.profit ?? 0) >= 0
+                    ? "font-semibold text-success"
+                    : "font-semibold text-destructive"
+                }
+              >
+                R$ {pendingConfirmationBet?.profit.toLocaleString("pt-BR")}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Data</span>
+              <span className="font-medium">
+                {pendingConfirmationBet
+                  ? new Date(pendingConfirmationBet.created_at).toLocaleDateString("pt-BR")
+                  : ""}
+              </span>
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCreating}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmCreate} disabled={isCreating}>
+              {isCreating ? "Confirmando..." : "Confirmar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteDialogOpen}
