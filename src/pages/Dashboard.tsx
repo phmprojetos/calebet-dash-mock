@@ -334,7 +334,7 @@ export default function Dashboard() {
               onClick={() => navigateToBets()}
             />
             <StatCard
-              title="Stake Total"
+              title="Valor total apostado"
               value={`R$ ${filteredStats.total_stake.toLocaleString("pt-BR")}`}
               icon={DollarSign}
               trend="neutral"
