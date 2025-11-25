@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { UserMenu } from "@/components/UserMenu";
 import Dashboard from "./pages/Dashboard";
 import Bets from "./pages/Bets";
 import Import from "./pages/Import";
@@ -34,8 +35,9 @@ const App = () => (
                     <div className="min-h-screen flex w-full">
                       <AppSidebar />
                       <main className="flex-1">
-                        <header className="h-14 border-b border-border bg-card flex items-center px-4 sticky top-0 z-10">
+                        <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 sticky top-0 z-10">
                           <SidebarTrigger />
+                          <UserMenu />
                         </header>
                         <div className="p-6">
                           <Routes>
