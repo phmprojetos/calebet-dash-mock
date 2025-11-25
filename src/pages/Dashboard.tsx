@@ -181,8 +181,9 @@ export default function Dashboard() {
 
   const totalFilteredBets = filteredStats?.total_bets ?? 0;
   const distinctFilteredMarkets = filteredStats ? Object.keys(filteredStats.by_market).length : 0;
+  const hasLossesInPeriod = (filteredStats?.by_result.loss ?? 0) > 0;
   const hasSufficientWorstMarketSample =
-    totalFilteredBets >= 3 && distinctFilteredMarkets >= 2;
+    totalFilteredBets >= 3 && distinctFilteredMarkets >= 2 && hasLossesInPeriod;
   const bestMarketKey = filteredStats?.best_market;
   const worstMarketKey = filteredStats?.worst_market;
   const bestMarketData = bestMarketKey ? filteredStats?.by_market[bestMarketKey] : undefined;
