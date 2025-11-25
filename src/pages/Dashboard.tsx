@@ -179,15 +179,12 @@ export default function Dashboard() {
     [endDate, navigate, selectedPeriod, startDate]
   );
 
-  const totalFilteredBets = filteredStats?.total_bets ?? 0;
-  const distinctFilteredMarkets = filteredStats ? Object.keys(filteredStats.by_market).length : 0;
   const hasLossesInPeriod = (filteredStats?.by_result.loss ?? 0) > 0;
-  const hasSufficientWorstMarketSample =
-    totalFilteredBets >= 3 && distinctFilteredMarkets >= 2 && hasLossesInPeriod;
   const bestMarketKey = filteredStats?.best_market;
   const worstMarketKey = filteredStats?.worst_market;
   const bestMarketData = bestMarketKey ? filteredStats?.by_market[bestMarketKey] : undefined;
   const worstMarketData = worstMarketKey ? filteredStats?.by_market[worstMarketKey] : undefined;
+  const hasWorstMarketData = Boolean(worstMarketKey && worstMarketData && hasLossesInPeriod);
 
   const handleResultClick = useCallback(
     (resultKey: "win" | "loss" | "pending") => {
@@ -438,17 +435,13 @@ export default function Dashboard() {
 
               <Card
                 className="border-destructive/50 bg-destructive/5 cursor-pointer transition-colors hover:bg-destructive/10"
-                onClick={
-                  hasSufficientWorstMarketSample && worstMarketKey
-                    ? () => handleMarketClick(worstMarketKey)
-                    : undefined
-                }
+                onClick={hasWorstMarketData && worstMarketKey ? () => handleMarketClick(worstMarketKey) : undefined}
               >
                 <CardHeader>
                   <CardTitle className="text-destructive">⚠️ Pior Mercado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {hasSufficientWorstMarketSample && worstMarketKey && worstMarketData ? (
+                  {hasWorstMarketData && worstMarketKey && worstMarketData ? (
                     <div className="space-y-2">
                       <p className="text-2xl font-bold">{worstMarketKey}</p>
                       <div className="text-sm text-muted-foreground">
