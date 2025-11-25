@@ -467,6 +467,8 @@ export default function Dashboard() {
                         border: "1px solid hsl(var(--border))",
                         borderRadius: "var(--radius)",
                       }}
+                      itemStyle={{ color: "#94a3b8" }}
+                      labelStyle={{ color: "#94a3b8" }}
                     />
                       <Bar
                         dataKey="roi"
