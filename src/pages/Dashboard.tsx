@@ -187,9 +187,7 @@ export default function Dashboard() {
   const hasBestMarketData = Boolean(
     bestMarketKey &&
     bestMarketData &&
-    bestMarketData.wins > 0 &&
-    bestMarketData.total_profit > 0 &&
-    bestMarketData.roi > 0
+    bestMarketData.total_bets > 0
   );
   const hasWorstMarketData = Boolean(worstMarketKey && worstMarketData && hasLossesInPeriod);
 
