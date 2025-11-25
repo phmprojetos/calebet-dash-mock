@@ -1,4 +1,12 @@
-import { LayoutDashboard, FileText, Upload, Lightbulb, Settings, LogOut } from "lucide-react";
+import {
+  CalendarDays,
+  LayoutDashboard,
+  FileText,
+  Upload,
+  Lightbulb,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
   Sidebar,
@@ -16,6 +24,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const menuItems = [
+  { title: "Eventos", url: "/eventos", icon: CalendarDays },
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Minhas Apostas", url: "/bets", icon: FileText },
   { title: "Importar CSV", url: "/import", icon: Upload },

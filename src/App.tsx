@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { UserMenu } from "@/components/UserMenu";
 import Dashboard from "./pages/Dashboard";
+import Eventos from "./pages/Eventos";
 import Bets from "./pages/Bets";
 import Import from "./pages/Import";
 import Insights from "./pages/Insights";
@@ -42,6 +43,7 @@ const App = () => (
                         <div className="p-6">
                           <Routes>
                             <Route path="/" element={<Dashboard />} />
+                            <Route path="/eventos" element={<Eventos />} />
                             <Route path="/bets" element={<Bets />} />
                             <Route path="/import" element={<Import />} />
                             <Route path="/import/cvs" element={<Import />} />
