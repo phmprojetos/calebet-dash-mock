@@ -184,6 +184,13 @@ export default function Dashboard() {
   const worstMarketKey = filteredStats?.worst_market;
   const bestMarketData = bestMarketKey ? filteredStats?.by_market[bestMarketKey] : undefined;
   const worstMarketData = worstMarketKey ? filteredStats?.by_market[worstMarketKey] : undefined;
+  const hasBestMarketData = Boolean(
+    bestMarketKey &&
+    bestMarketData &&
+    bestMarketData.wins > 0 &&
+    bestMarketData.total_profit > 0 &&
+    bestMarketData.roi > 0
+  );
   const hasWorstMarketData = Boolean(worstMarketKey && worstMarketData && hasLossesInPeriod);
 
   const handleResultClick = useCallback(
@@ -412,15 +419,15 @@ export default function Dashboard() {
 
           {filteredStats && (
             <div className="grid gap-4 md:grid-cols-2">
-              {bestMarketKey && bestMarketData && (
-                <Card
-                  className="border-success/50 bg-success/5 cursor-pointer transition-colors hover:bg-success/10"
-                  onClick={() => handleMarketClick(bestMarketKey)}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              <Card
+                className="border-success/50 bg-success/5 cursor-pointer transition-colors hover:bg-success/10"
+                onClick={hasBestMarketData && bestMarketKey ? () => handleMarketClick(bestMarketKey) : undefined}
+              >
+                <CardHeader>
+                  <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {hasBestMarketData && bestMarketKey && bestMarketData ? (
                     <div className="space-y-2">
                       <p className="text-2xl font-bold">{bestMarketKey}</p>
                       <div className="text-sm text-muted-foreground">
@@ -429,9 +436,13 @@ export default function Dashboard() {
                         <p>Lucro: R$ {bestMarketData.total_profit.toLocaleString("pt-BR")}</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Ainda não há um melhor mercado neste período.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
               <Card
                 className="border-destructive/50 bg-destructive/5 cursor-pointer transition-colors hover:bg-destructive/10"
