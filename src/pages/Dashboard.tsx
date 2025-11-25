@@ -179,6 +179,15 @@ export default function Dashboard() {
     [endDate, navigate, selectedPeriod, startDate]
   );
 
+  const totalFilteredBets = filteredStats?.total_bets ?? 0;
+  const distinctFilteredMarkets = filteredStats ? Object.keys(filteredStats.by_market).length : 0;
+  const hasSufficientWorstMarketSample =
+    totalFilteredBets >= 3 && distinctFilteredMarkets >= 2;
+  const bestMarketKey = filteredStats?.best_market;
+  const worstMarketKey = filteredStats?.worst_market;
+  const bestMarketData = bestMarketKey ? filteredStats?.by_market[bestMarketKey] : undefined;
+  const worstMarketData = worstMarketKey ? filteredStats?.by_market[worstMarketKey] : undefined;
+
   const handleResultClick = useCallback(
     (resultKey: "win" | "loss" | "pending") => {
       navigateToBets({ result: resultKey });
@@ -403,43 +412,58 @@ export default function Dashboard() {
             </Card>
           </div>
 
-          {filteredStats.best_market && filteredStats.worst_market && (
+          {filteredStats && (
             <div className="grid gap-4 md:grid-cols-2">
-              <Card
-                className="border-success/50 bg-success/5 cursor-pointer transition-colors hover:bg-success/10"
-                onClick={() => handleMarketClick(filteredStats.best_market)}
-              >
-                <CardHeader>
-                  <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">{filteredStats.best_market}</p>
-                    <div className="text-sm text-muted-foreground">
-                      <p>Win Rate: {filteredStats.by_market[filteredStats.best_market].win_rate}%</p>
-                      <p>ROI: {filteredStats.by_market[filteredStats.best_market].roi.toFixed(2)}%</p>
-                      <p>Lucro: R$ {filteredStats.by_market[filteredStats.best_market].total_profit.toLocaleString("pt-BR")}</p>
+              {bestMarketKey && bestMarketData && (
+                <Card
+                  className="border-success/50 bg-success/5 cursor-pointer transition-colors hover:bg-success/10"
+                  onClick={() => handleMarketClick(bestMarketKey)}
+                >
+                  <CardHeader>
+                    <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <p className="text-2xl font-bold">{bestMarketKey}</p>
+                      <div className="text-sm text-muted-foreground">
+                        <p>Win Rate: {bestMarketData.win_rate}%</p>
+                        <p>ROI: {bestMarketData.roi.toFixed(2)}%</p>
+                        <p>Lucro: R$ {bestMarketData.total_profit.toLocaleString("pt-BR")}</p>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              )}
 
               <Card
                 className="border-destructive/50 bg-destructive/5 cursor-pointer transition-colors hover:bg-destructive/10"
-                onClick={() => handleMarketClick(filteredStats.worst_market)}
+                onClick={
+                  hasSufficientWorstMarketSample && worstMarketKey
+                    ? () => handleMarketClick(worstMarketKey)
+                    : undefined
+                }
               >
                 <CardHeader>
                   <CardTitle className="text-destructive">⚠️ Pior Mercado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    <p className="text-2xl font-bold">{filteredStats.worst_market}</p>
-                    <div className="text-sm text-muted-foreground">
-                      <p>Win Rate: {filteredStats.by_market[filteredStats.worst_market].win_rate}%</p>
-                      <p>ROI: {filteredStats.by_market[filteredStats.worst_market].roi.toFixed(2)}%</p>
-                      <p>Lucro: R$ {filteredStats.by_market[filteredStats.worst_market].total_profit.toLocaleString("pt-BR")}</p>
+                  {hasSufficientWorstMarketSample && worstMarketKey && worstMarketData ? (
+                    <div className="space-y-2">
+                      <p className="text-2xl font-bold">{worstMarketKey}</p>
+                      <div className="text-sm text-muted-foreground">
+                        <p>Win Rate: {worstMarketData.win_rate}%</p>
+                        <p>ROI: {worstMarketData.roi.toFixed(2)}%</p>
+                        <p>
+                          Lucro: R${" "}
+                          {worstMarketData.total_profit.toLocaleString("pt-BR")}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Ainda não há um pior mercado neste período.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
