@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, DollarSign, Target, Percent, BarChart3 } from
 import { StatCard } from "@/components/StatCard";
 import { useStats } from "@/hooks/useStats";
 import { useAuth } from "@/contexts/AuthContext";
-import { getDateRange } from "@/lib/utils";
+import { filterBetsByDateRange, getDateRange } from "@/lib/utils";
 import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -51,16 +51,72 @@ export default function Dashboard() {
   const hasApiMonthlyPerformance =
     (filteredStats?.monthly_performance?.length ?? 0) > 0;
 
-  const shouldFetchAllBets = selectedPeriod === "all" && !hasApiMonthlyPerformance;
-
-  const {
-    data: allBets,
-    isLoading: isLoadingAllBets,
-  } = useQuery({
+  const { data: userBets = [], isLoading: isLoadingBets } = useQuery({
     queryKey: ["bets", user?.id || ""],
     queryFn: () => betsService.getBets(user?.id || ""),
-    enabled: shouldFetchAllBets && !!user?.id,
+    enabled: !!user?.id,
   });
+
+  const betsInPeriod = useMemo(() => {
+    if (!userBets.length) {
+      return [];
+    }
+
+    if (selectedPeriod === "all") {
+      return userBets;
+    }
+
+    return filterBetsByDateRange(userBets, startDate, endDate);
+  }, [endDate, selectedPeriod, startDate, userBets]);
+
+  const marketPerformance = useMemo(() => {
+    const performance = new Map<string, { profit: number; loss: number }>();
+
+    betsInPeriod.forEach((bet) => {
+      const current = performance.get(bet.market) ?? { profit: 0, loss: 0 };
+
+      if (bet.result === "win") {
+        const profit = bet.stake * bet.odd - bet.stake;
+        current.profit += profit;
+      }
+
+      if (bet.result === "loss") {
+        current.loss -= bet.stake;
+      }
+
+      performance.set(bet.market, current);
+    });
+
+    return performance;
+  }, [betsInPeriod]);
+
+  const bestMarketFromBets = useMemo(() => {
+    let key = "";
+    let profit = 0;
+
+    marketPerformance.forEach((value, marketKey) => {
+      if (value.profit > profit) {
+        profit = value.profit;
+        key = marketKey;
+      }
+    });
+
+    return { key, profit };
+  }, [marketPerformance]);
+
+  const worstMarketFromBets = useMemo(() => {
+    let key = "";
+    let loss = 0;
+
+    marketPerformance.forEach((value, marketKey) => {
+      if (value.loss < loss) {
+        loss = value.loss;
+        key = marketKey;
+      }
+    });
+
+    return { key, loss };
+  }, [marketPerformance]);
 
   const monthlyPerformanceChartData = useMemo(() => {
     const apiMonthlyPerformance = filteredStats?.monthly_performance ?? [];
@@ -73,7 +129,10 @@ export default function Dashboard() {
       }));
     }
 
-    if (!allBets || allBets.length === 0) {
+    const shouldUseBetsFallback =
+      selectedPeriod === "all" && !hasApiMonthlyPerformance && userBets.length > 0;
+
+    if (!shouldUseBetsFallback) {
       return [];
     }
 
@@ -82,7 +141,7 @@ export default function Dashboard() {
       { month: string; gains: number; losses: number; timestamp: number }
     >();
 
-    allBets.forEach((bet) => {
+    userBets.forEach((bet) => {
       const betDate = new Date(bet.created_at);
       const time = betDate.getTime();
 
@@ -119,10 +178,10 @@ export default function Dashboard() {
         gains: Math.round(entry.gains * 100) / 100,
         losses: Math.round(entry.losses * 100) / 100,
       }));
-  }, [allBets, filteredStats]);
+  }, [filteredStats, hasApiMonthlyPerformance, selectedPeriod, userBets]);
 
   const isMonthlyPerformanceLoading =
-    shouldFetchAllBets && isLoadingAllBets && monthlyPerformanceChartData.length === 0;
+    selectedPeriod === "all" && !hasApiMonthlyPerformance && isLoadingBets && monthlyPerformanceChartData.length === 0;
 
   const resultData = filteredStats
     ? [
@@ -180,16 +239,14 @@ export default function Dashboard() {
   );
 
   const hasLossesInPeriod = (filteredStats?.by_result.loss ?? 0) > 0;
-  const bestMarketKey = filteredStats?.best_market;
-  const worstMarketKey = filteredStats?.worst_market;
+  const bestMarketKey = bestMarketFromBets.key || filteredStats?.best_market;
+  const worstMarketKey = worstMarketFromBets.key || filteredStats?.worst_market;
   const bestMarketData = bestMarketKey ? filteredStats?.by_market[bestMarketKey] : undefined;
   const worstMarketData = worstMarketKey ? filteredStats?.by_market[worstMarketKey] : undefined;
-  const hasBestMarketData = Boolean(
-    bestMarketKey &&
-    bestMarketData &&
-    bestMarketData.total_bets > 0
-  );
-  const hasWorstMarketData = Boolean(worstMarketKey && worstMarketData && hasLossesInPeriod);
+  const bestMarketProfit = bestMarketFromBets.profit || bestMarketData?.total_profit || 0;
+  const worstMarketLoss = worstMarketFromBets.loss || worstMarketData?.total_profit || 0;
+  const hasBestMarketData = Boolean(bestMarketKey && bestMarketProfit > 0);
+  const hasWorstMarketData = Boolean(worstMarketKey && worstMarketLoss < 0 && hasLossesInPeriod);
 
   const handleResultClick = useCallback(
     (resultKey: "win" | "loss" | "pending") => {
@@ -198,7 +255,19 @@ export default function Dashboard() {
     [navigateToBets]
   );
 
-  const handleMarketClick = useCallback(
+  const handleBestMarketClick = useCallback(() => {
+    if (bestMarketKey) {
+      navigateToBets({ result: "win", market: bestMarketKey });
+    }
+  }, [bestMarketKey, navigateToBets]);
+
+  const handleWorstMarketClick = useCallback(() => {
+    if (worstMarketKey) {
+      navigateToBets({ result: "loss", market: worstMarketKey });
+    }
+  }, [navigateToBets, worstMarketKey]);
+
+  const handleMarketFilter = useCallback(
     (marketKey: string) => {
       navigateToBets({ market: marketKey });
     },
@@ -397,18 +466,18 @@ export default function Dashboard() {
                         borderRadius: "var(--radius)",
                       }}
                     />
-                    <Bar
-                      dataKey="roi"
-                      fill="hsl(var(--primary))"
-                      radius={[4, 4, 0, 0]}
-                      cursor="pointer"
-                      onClick={(data) => {
-                        const marketKey = (data?.payload as { key?: string })?.key;
-                        if (marketKey) {
-                          handleMarketClick(marketKey);
-                        }
-                      }}
-                    />
+                      <Bar
+                        dataKey="roi"
+                        fill="hsl(var(--primary))"
+                        radius={[4, 4, 0, 0]}
+                        cursor="pointer"
+                        onClick={(data) => {
+                          const marketKey = (data?.payload as { key?: string })?.key;
+                          if (marketKey) {
+                            handleMarketFilter(marketKey);
+                          }
+                        }}
+                      />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -419,19 +488,17 @@ export default function Dashboard() {
             <div className="grid gap-4 md:grid-cols-2">
               <Card
                 className="border-success/50 bg-success/5 cursor-pointer transition-colors hover:bg-success/10"
-                onClick={hasBestMarketData && bestMarketKey ? () => handleMarketClick(bestMarketKey) : undefined}
+                onClick={hasBestMarketData ? handleBestMarketClick : undefined}
               >
                 <CardHeader>
                   <CardTitle className="text-success">🎯 Melhor Mercado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {hasBestMarketData && bestMarketKey && bestMarketData ? (
+                  {hasBestMarketData && bestMarketKey ? (
                     <div className="space-y-2">
                       <p className="text-2xl font-bold">{bestMarketKey}</p>
                       <div className="text-sm text-muted-foreground">
-                        <p>Win Rate: {bestMarketData.win_rate}%</p>
-                        <p>ROI: {bestMarketData.roi.toFixed(2)}%</p>
-                        <p>Lucro: R$ {bestMarketData.total_profit.toLocaleString("pt-BR")}</p>
+                        <p>Lucro: R$ {bestMarketProfit.toLocaleString("pt-BR")}</p>
                       </div>
                     </div>
                   ) : (
@@ -444,22 +511,17 @@ export default function Dashboard() {
 
               <Card
                 className="border-destructive/50 bg-destructive/5 cursor-pointer transition-colors hover:bg-destructive/10"
-                onClick={hasWorstMarketData && worstMarketKey ? () => handleMarketClick(worstMarketKey) : undefined}
+                onClick={hasWorstMarketData ? handleWorstMarketClick : undefined}
               >
                 <CardHeader>
                   <CardTitle className="text-destructive">⚠️ Pior Mercado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {hasWorstMarketData && worstMarketKey && worstMarketData ? (
+                  {hasWorstMarketData && worstMarketKey ? (
                     <div className="space-y-2">
                       <p className="text-2xl font-bold">{worstMarketKey}</p>
                       <div className="text-sm text-muted-foreground">
-                        <p>Win Rate: {worstMarketData.win_rate}%</p>
-                        <p>ROI: {worstMarketData.roi.toFixed(2)}%</p>
-                        <p>
-                          Lucro: R${" "}
-                          {worstMarketData.total_profit.toLocaleString("pt-BR")}
-                        </p>
+                        <p>Perda: R$ {Math.abs(worstMarketLoss).toLocaleString("pt-BR")}</p>
                       </div>
                     </div>
                   ) : (
