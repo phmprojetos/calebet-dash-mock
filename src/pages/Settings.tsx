@@ -1,26 +1,50 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, DollarSign, Target, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Settings() {
   const { toast } = useToast();
+  const { user, profile, updateProfile } = useAuth();
   const [formData, setFormData] = useState({
-    name: "João Silva",
-    email: "joao.silva@email.com",
-    bankroll: "5000",
+    name: "",
+    email: "",
+    bankroll: "",
     monthlyGoal: "1000",
   });
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (profile && user) {
+      setFormData({
+        name: profile.nome,
+        email: user.email || "",
+        bankroll: profile.banca_inicial.toString(),
+        monthlyGoal: "1000",
+      });
+    }
+  }, [profile, user]);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Configurações salvas",
-      description: "Suas preferências foram atualizadas com sucesso.",
-    });
+    
+    const { error } = await updateProfile(formData.name, Number(formData.bankroll));
+    
+    if (error) {
+      toast({
+        title: "Erro ao salvar",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Configurações salvas",
+        description: "Suas preferências foram atualizadas com sucesso.",
+      });
+    }
   };
 
   return (
@@ -56,10 +80,10 @@ export default function Settings() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="seu@email.com"
-                className="text-sm md:text-base"
+                disabled
+                className="text-sm md:text-base opacity-60"
               />
+              <p className="text-xs text-muted-foreground">O email não pode ser alterado</p>
             </div>
           </CardContent>
         </Card>
@@ -119,8 +143,8 @@ export default function Settings() {
         </CardHeader>
         <CardContent className="text-xs md:text-sm text-muted-foreground">
           <p>
-            Atualmente, todas as configurações são armazenadas localmente. Em breve, integraremos
-            com o backend para sincronização em nuvem e backup automático dos seus dados.
+            Suas configurações estão sincronizadas com o backend. Todas as alterações são salvas
+            automaticamente na nuvem com backup automático dos seus dados.
           </p>
         </CardContent>
       </Card>
