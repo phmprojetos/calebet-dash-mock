@@ -184,26 +184,28 @@ export default function Dashboard() {
     selectedPeriod === "all" && !hasApiMonthlyPerformance && isLoadingBets && monthlyPerformanceChartData.length === 0;
 
   const resultData = filteredStats
-    ? [
+    ? ([
         {
           name: "Vitórias",
           value: filteredStats.by_result.win,
-          color: "hsl(var(--success))",
+          color: "#22c55e",
           resultKey: "win" as const,
         },
         {
           name: "Derrotas",
           value: filteredStats.by_result.loss,
-          color: "hsl(var(--destructive))",
+          color: "#ef4444",
           resultKey: "loss" as const,
         },
-        {
-          name: "Pendentes",
-          value: filteredStats.by_result.pending,
-          color: "hsl(var(--muted))",
-          resultKey: "pending" as const,
-        },
-      ]
+        filteredStats.by_result.void > 0
+          ? {
+              name: "Void",
+              value: filteredStats.by_result.void,
+              color: "#94a3b8",
+              resultKey: "void" as const,
+            }
+          : null,
+      ].filter(Boolean) as { name: string; value: number; color: string; resultKey: "win" | "loss" | "void" }[])
     : [];
 
   const marketData = filteredStats
@@ -468,7 +470,6 @@ export default function Dashboard() {
                     />
                       <Bar
                         dataKey="roi"
-                        fill="hsl(var(--primary))"
                         radius={[4, 4, 0, 0]}
                         cursor="pointer"
                         onClick={(data) => {
@@ -477,7 +478,11 @@ export default function Dashboard() {
                             handleMarketFilter(marketKey);
                           }
                         }}
-                      />
+                      >
+                        {marketData.map((entry, index) => (
+                          <Cell key={`roi-bar-${entry.key}-${index}`} fill={entry.roi < 0 ? "#ef4444" : "#22c55e"} />
+                        ))}
+                      </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
