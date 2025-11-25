@@ -56,10 +56,45 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
     }
   }, [bet, open]);
 
+  useEffect(() => {
+    setFormData((prev) => {
+      const stake = Number.isFinite(prev.stake) ? prev.stake : 0;
+      const odd = Number.isFinite(prev.odd) ? prev.odd : 0;
+
+      let computedProfit = prev.profit;
+
+      switch (prev.result) {
+        case "win":
+          computedProfit = stake * odd - stake;
+          break;
+        case "loss":
+          computedProfit = -stake;
+          break;
+        case "void":
+        case "pending":
+          computedProfit = 0;
+          break;
+        default:
+          return prev;
+      }
+
+      if (computedProfit === prev.profit) {
+        return prev;
+      }
+
+      return { ...prev, profit: computedProfit };
+    });
+  }, [formData.stake, formData.odd, formData.result]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave(formData);
   };
+
+  const isProfitDisabled =
+    !formData.result ||
+    formData.result === "pending" ||
+    formData.result === "void";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,7 +133,12 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
                   step="0.01"
                   value={formData.odd}
                   onChange={(e) =>
-                    setFormData({ ...formData, odd: parseFloat(e.target.value) })
+                    setFormData({
+                      ...formData,
+                      odd: Number.isFinite(parseFloat(e.target.value))
+                        ? parseFloat(e.target.value)
+                        : 0,
+                    })
                   }
                   required
                 />
@@ -110,7 +150,12 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
                   type="number"
                   value={formData.stake}
                   onChange={(e) =>
-                    setFormData({ ...formData, stake: parseFloat(e.target.value) })
+                    setFormData({
+                      ...formData,
+                      stake: Number.isFinite(parseFloat(e.target.value))
+                        ? parseFloat(e.target.value)
+                        : 0,
+                    })
                   }
                   required
                 />
@@ -138,14 +183,20 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="profit">Lucro (R$)</Label>
+                <Label htmlFor="profit">Lucro/Perda (R$)</Label>
                 <Input
                   id="profit"
                   type="number"
                   value={formData.profit}
                   onChange={(e) =>
-                    setFormData({ ...formData, profit: parseFloat(e.target.value) })
+                    setFormData({
+                      ...formData,
+                      profit: Number.isFinite(parseFloat(e.target.value))
+                        ? parseFloat(e.target.value)
+                        : 0,
+                    })
                   }
+                  disabled={isProfitDisabled}
                   required
                 />
               </div>
