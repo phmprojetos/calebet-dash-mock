@@ -606,38 +606,40 @@ export default function Bets() {
 
       {/* Paginação */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-border pt-4">
-          <p className="text-sm text-muted-foreground">
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
             Mostrando {(page - 1) * itemsPerPage + 1} a {Math.min(page * itemsPerPage, total)} de {total} apostas
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center sm:justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
               disabled={page <= 1 || isLoading}
+              className="h-9 px-2 sm:px-3"
             >
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Anterior</span>
             </Button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              {Array.from({ length: Math.min(isMobile ? 3 : 5, totalPages) }, (_, i) => {
                 let pageNum: number;
-                if (totalPages <= 5) {
+                const maxPages = isMobile ? 3 : 5;
+                if (totalPages <= maxPages) {
                   pageNum = i + 1;
-                } else if (page <= 3) {
+                } else if (page <= Math.ceil(maxPages / 2)) {
                   pageNum = i + 1;
-                } else if (page >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
+                } else if (page >= totalPages - Math.floor(maxPages / 2)) {
+                  pageNum = totalPages - maxPages + 1 + i;
                 } else {
-                  pageNum = page - 2 + i;
+                  pageNum = page - Math.floor(maxPages / 2) + i;
                 }
                 return (
                   <Button
                     key={pageNum}
                     variant={page === pageNum ? "default" : "outline"}
                     size="sm"
-                    className="w-9"
+                    className="w-9 h-9"
                     onClick={() => setCurrentPage(pageNum)}
                     disabled={isLoading}
                   >
@@ -651,9 +653,10 @@ export default function Bets() {
               size="sm"
               onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
               disabled={page >= totalPages || isLoading}
+              className="h-9 px-2 sm:px-3"
             >
-              Próxima
-              <ChevronRight className="h-4 w-4 ml-1" />
+              <span className="hidden sm:inline mr-1">Próxima</span>
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
