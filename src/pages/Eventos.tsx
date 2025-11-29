@@ -269,22 +269,24 @@ export default function Eventos() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground">
             Eventos
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
             Jogos de futebol disponíveis para apostar
           </p>
         </div>
-        <Badge variant="outline" className="gap-1.5">
-          <Zap className="h-3 w-3 text-primary" />
-          {eventosFiltrados.filter((e) => e.isLive).length} ao vivo
+        <Badge variant="outline" className="gap-1.5 w-fit self-start sm:self-auto">
+          <Zap className="h-3 w-3 text-primary flex-shrink-0" />
+          <span className="whitespace-nowrap">
+            {eventosFiltrados.filter((e) => e.isLive).length} ao vivo
+          </span>
           {eventosFiltrados.length > 0 && (
-            <span className="text-muted-foreground">
+            <span className="text-muted-foreground hidden sm:inline">
               {" "}• {eventosFiltrados.length} {eventosFiltrados.length === 1 ? "jogo" : "jogos"}
             </span>
           )}
@@ -331,49 +333,49 @@ export default function Eventos() {
 
         {/* Active Filters Indicator */}
         {(searchQuery || selectedCompetition !== "all") && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+            <span className="text-[10px] sm:text-xs text-muted-foreground">Filtros ativos:</span>
             {searchQuery && (
-              <Badge variant="secondary" className="gap-1 text-xs">
-                Pesquisa: "{searchQuery}"
+              <Badge variant="secondary" className="gap-1 text-[10px] sm:text-xs px-1.5 py-0.5">
+                <span className="truncate max-w-[120px] sm:max-w-none">Pesquisa: "{searchQuery}"</span>
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="ml-1 hover:text-destructive"
+                  className="ml-0.5 hover:text-destructive flex-shrink-0"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 </button>
               </Badge>
             )}
             {selectedCompetition !== "all" && (
-              <Badge variant="secondary" className="gap-1 text-xs">
-                {selectedCompetition}
+              <Badge variant="secondary" className="gap-1 text-[10px] sm:text-xs px-1.5 py-0.5">
+                <span className="truncate max-w-[100px] sm:max-w-none">{selectedCompetition}</span>
                 <button
                   onClick={() => setSelectedCompetition("all")}
-                  className="ml-1 hover:text-destructive"
+                  className="ml-0.5 hover:text-destructive flex-shrink-0"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 </button>
               </Badge>
             )}
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs px-2"
+              className="h-6 text-[10px] sm:text-xs px-1.5 sm:px-2"
               onClick={() => {
                 setSearchQuery("");
                 setSelectedCompetition("all");
               }}
             >
-              Limpar filtros
+              Limpar
             </Button>
           </div>
         )}
       </div>
 
       {/* Calendar Strip - Compact SofaScore style */}
-      <Card className="p-2 bg-card">
+      <Card className="p-1.5 sm:p-2 bg-card">
         <ScrollArea className="w-full">
-          <div className="flex gap-1">
+          <div className="flex gap-1 pb-1">
             {dias.map((dia) => {
               const isSelected = selectedDate === dia.key;
               const hasEvents = eventosMock.some((e) => e.date === dia.key);
@@ -383,7 +385,7 @@ export default function Eventos() {
                   key={dia.key}
                   onClick={() => setSelectedDate(dia.key)}
                   className={cn(
-                    "flex flex-col items-center justify-center rounded-lg transition-all min-w-[48px] py-2 px-2",
+                    "flex flex-col items-center justify-center rounded-lg transition-all min-w-[44px] sm:min-w-[48px] py-1.5 sm:py-2 px-1.5 sm:px-2 flex-shrink-0",
                     isSelected
                       ? "bg-primary text-primary-foreground"
                       : hasEvents
@@ -391,11 +393,11 @@ export default function Eventos() {
                         : "text-muted-foreground hover:bg-secondary/50"
                   )}
                 >
-                  <span className="text-[10px] font-medium opacity-80">
+                  <span className="text-[9px] sm:text-[10px] font-medium opacity-80 leading-tight">
                     {dia.isToday ? "HOJE" : dia.isTomorrow ? "AMANHÃ" : dia.weekday}
                   </span>
-                  <span className="text-lg font-bold leading-tight">{dia.day}</span>
-                  <span className="text-[9px] opacity-60">{dia.month}</span>
+                  <span className="text-base sm:text-lg font-bold leading-tight">{dia.day}</span>
+                  <span className="text-[8px] sm:text-[9px] opacity-60 leading-tight">{dia.month}</span>
                   {hasEvents && !isSelected && (
                     <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
                   )}
@@ -410,18 +412,18 @@ export default function Eventos() {
       {/* Events List */}
       <div className="space-y-4">
         {Object.keys(eventosPorLiga).length === 0 ? (
-          <Card className="p-8 text-center">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
-                <Trophy className="h-6 w-6 text-muted-foreground" />
+          <Card className="p-6 sm:p-8 text-center">
+            <div className="flex flex-col items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-secondary flex items-center justify-center">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground">
+                <h3 className="text-sm sm:text-base font-semibold text-foreground">
                   {searchQuery || selectedCompetition !== "all"
                     ? "Nenhum jogo encontrado"
                     : "Nenhum jogo nesta data"}
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1 px-2">
                   {searchQuery || selectedCompetition !== "all" ? (
                     <>
                       Tente ajustar os filtros ou{" "}
@@ -430,7 +432,7 @@ export default function Eventos() {
                           setSearchQuery("");
                           setSelectedCompetition("all");
                         }}
-                        className="text-primary hover:underline"
+                        className="text-primary hover:underline font-medium"
                       >
                         limpar os filtros
                       </button>
@@ -446,14 +448,14 @@ export default function Eventos() {
           Object.entries(eventosPorLiga).map(([liga, eventos]) => (
             <Card key={liga} className="overflow-hidden">
               {/* League Header */}
-              <div className="flex items-center gap-2 px-3 py-2 bg-secondary/50 border-b border-border">
-                <div className="w-5 h-5 rounded bg-background flex items-center justify-center text-xs">
+              <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-secondary/50 border-b border-border">
+                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded bg-background flex items-center justify-center text-[10px] sm:text-xs flex-shrink-0">
                   ⚽
                 </div>
-                <span className="text-xs font-medium text-foreground">
+                <span className="text-[11px] sm:text-xs font-medium text-foreground truncate flex-1">
                   {liga}
                 </span>
-                <span className="text-xs text-muted-foreground ml-auto">
+                <span className="text-[10px] sm:text-xs text-muted-foreground ml-auto flex-shrink-0">
                   {eventos.length} {eventos.length === 1 ? "jogo" : "jogos"}
                 </span>
               </div>
@@ -464,30 +466,29 @@ export default function Eventos() {
                   <div
                     key={evento.id}
                     className={cn(
-                      "p-3 transition-colors hover:bg-secondary/30",
+                      "p-2.5 sm:p-3 transition-colors hover:bg-secondary/30",
                       evento.isLive && "bg-primary/5"
                     )}
                   >
-                    {/* Mobile Layout */}
-                    {isMobile ? (
-                      <div className="space-y-3">
+                    {/* Mobile Layout - Usa classes Tailwind responsivas como fallback */}
+                    <div className="block md:hidden space-y-2.5">
                         {/* Time / Live Badge */}
                         <div className="flex items-center justify-between">
                           {evento.isLive ? (
-                            <Badge variant="destructive" className="gap-1 text-xs animate-pulse">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                            <Badge variant="destructive" className="gap-1 text-[10px] px-2 py-0.5 animate-pulse">
+                              <span className="w-1 h-1 rounded-full bg-white" />
                               LIVE
                             </Badge>
                           ) : (
                             <div className="flex items-center gap-1.5 text-muted-foreground">
-                              <Clock className="h-3 w-3" />
-                              <span className="text-xs font-medium">{evento.time}</span>
+                              <Clock className="h-3 w-3 flex-shrink-0" />
+                              <span className="text-[11px] font-medium">{evento.time}</span>
                             </div>
                           )}
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-xs text-primary"
+                            className="h-7 text-[11px] px-2 text-primary"
                             onClick={() => handleRegistrarAposta(evento)}
                           >
                             Apostar
@@ -496,29 +497,27 @@ export default function Eventos() {
                         </div>
 
                         {/* Teams */}
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
-                                {evento.homeShort.slice(0, 2)}
-                              </div>
-                              <span className="text-sm font-medium text-foreground truncate">
-                                {evento.homeTeam}
-                              </span>
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-secondary flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0">
+                              {evento.homeShort.slice(0, 2)}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
-                                {evento.awayShort.slice(0, 2)}
-                              </div>
-                              <span className="text-sm font-medium text-foreground truncate">
-                                {evento.awayTeam}
-                              </span>
+                            <span className="text-xs sm:text-sm font-medium text-foreground truncate flex-1">
+                              {evento.homeTeam}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-secondary flex items-center justify-center text-[9px] sm:text-[10px] font-bold flex-shrink-0">
+                              {evento.awayShort.slice(0, 2)}
                             </div>
+                            <span className="text-xs sm:text-sm font-medium text-foreground truncate flex-1">
+                              {evento.awayTeam}
+                            </span>
                           </div>
                         </div>
 
                         {/* Odds */}
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 pt-1">
                           {[
                             { label: "1", value: evento.homeOdd },
                             { label: "X", value: evento.drawOdd },
@@ -526,21 +525,20 @@ export default function Eventos() {
                           ].map((odd) => (
                             <button
                               key={odd.label}
-                              className="flex flex-col items-center justify-center py-2 rounded-lg bg-secondary/80 hover:bg-primary/20 transition-colors border border-transparent hover:border-primary/30"
+                              className="flex flex-col items-center justify-center py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-secondary/80 hover:bg-primary/20 active:bg-primary/30 transition-colors border border-transparent hover:border-primary/30"
                             >
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-[9px] sm:text-[10px] text-muted-foreground">
                                 {odd.label}
                               </span>
-                              <span className="text-sm font-bold text-foreground">
+                              <span className="text-xs sm:text-sm font-bold text-foreground">
                                 {odd.value.toFixed(2)}
                               </span>
                             </button>
                           ))}
                         </div>
                       </div>
-                    ) : (
-                      /* Desktop Layout */
-                      <div className="flex items-center gap-4">
+                    {/* Desktop Layout - Usa classes Tailwind responsivas */}
+                    <div className="hidden md:flex items-center gap-4">
                         {/* Time */}
                         <div className="w-16 flex-shrink-0">
                           {evento.isLive ? (
@@ -616,7 +614,6 @@ export default function Eventos() {
                           <ChevronRight className="h-3 w-3 ml-1" />
                         </Button>
                       </div>
-                    )}
                   </div>
                 ))}
               </div>
