@@ -86,72 +86,48 @@ function getDateLabel(date: Date, index: number) {
   return `${getDayOfMonth(date)}/${(date.getMonth() + 1).toString().padStart(2, "0")}`;
 }
 
+// Lista de ligas principais (serão exibidas separadamente)
+const MAIN_LEAGUES = [
+  { pattern: "brasileirão", country: "brazil", priority: 0 },
+  { pattern: "brasileiro", country: "brazil", priority: 0 },
+  { pattern: "serie a", country: "brazil", priority: 0 },
+  { pattern: "premier league", country: "england", priority: 1 },
+  { pattern: "libertadores", country: "", priority: 2 },
+  { pattern: "la liga", country: "spain", priority: 3 },
+  { pattern: "laliga", country: "spain", priority: 3 },
+  { pattern: "bundesliga", country: "germany", priority: 4 },
+  { pattern: "serie a", country: "italy", priority: 5 },
+  { pattern: "ligue 1", country: "france", priority: 6 },
+  { pattern: "champions", country: "", priority: 7 },
+  { pattern: "europa league", country: "", priority: 8 },
+  { pattern: "copa do brasil", country: "brazil", priority: 9 },
+  { pattern: "sul-americana", country: "", priority: 10 },
+  { pattern: "sudamericana", country: "", priority: 10 },
+];
+
+// Função para verificar se é uma liga principal
+function isMainLeague(league: string, country: string): boolean {
+  const leagueLower = league.toLowerCase();
+  const countryLower = country.toLowerCase();
+
+  return MAIN_LEAGUES.some((main) => {
+    const matchesPattern = leagueLower.includes(main.pattern);
+    const matchesCountry = main.country === "" || countryLower.includes(main.country);
+    return matchesPattern && matchesCountry;
+  });
+}
+
 // Função para obter a prioridade de uma liga (ordem de exibição)
 function getLeaguePriority(league: string, country: string): number {
   const leagueLower = league.toLowerCase();
   const countryLower = country.toLowerCase();
 
-  // Brasileirão tem prioridade máxima
-  if (
-    (leagueLower.includes("brasileirão") || leagueLower.includes("brasileiro")) &&
-    (countryLower.includes("brazil") || countryLower.includes("brasil"))
-  ) {
-    return 0;
-  }
-
-  // Serie A Brasil
-  if (leagueLower.includes("serie a") && (countryLower.includes("brazil") || countryLower.includes("brasil"))) {
-    return 0;
-  }
-
-  // Premier League (Inglaterra)
-  if (leagueLower.includes("premier league") && (countryLower.includes("england") || countryLower.includes("inglaterra"))) {
-    return 1;
-  }
-
-  // Libertadores
-  if (leagueLower.includes("libertadores")) {
-    return 2;
-  }
-
-  // La Liga
-  if (leagueLower.includes("la liga") || leagueLower.includes("laliga")) {
-    return 3;
-  }
-
-  // Bundesliga
-  if (leagueLower.includes("bundesliga")) {
-    return 4;
-  }
-
-  // Serie A Itália
-  if (leagueLower.includes("serie a") && (countryLower.includes("italy") || countryLower.includes("itália"))) {
-    return 5;
-  }
-
-  // Ligue 1
-  if (leagueLower.includes("ligue 1")) {
-    return 6;
-  }
-
-  // Champions League
-  if (leagueLower.includes("champions")) {
-    return 7;
-  }
-
-  // Europa League
-  if (leagueLower.includes("europa league")) {
-    return 8;
-  }
-
-  // Copa do Brasil
-  if (leagueLower.includes("copa do brasil")) {
-    return 9;
-  }
-
-  // Sul-Americana
-  if (leagueLower.includes("sul-americana") || leagueLower.includes("sudamericana")) {
-    return 10;
+  for (const main of MAIN_LEAGUES) {
+    const matchesPattern = leagueLower.includes(main.pattern);
+    const matchesCountry = main.country === "" || countryLower.includes(main.country);
+    if (matchesPattern && matchesCountry) {
+      return main.priority;
+    }
   }
 
   // Demais ligas
@@ -194,7 +170,7 @@ export default function Eventos() {
   // Debounce da pesquisa
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
 
-  // Buscar eventos da API (eventos do dia)
+  // Buscar eventos da API (eventos do dia) - limite máximo da API é 50
   const { events, isLoading, isFetching, isError, refetch } = useEvents({
     date: selectedDate,
     limit: 50,
@@ -366,28 +342,58 @@ export default function Eventos() {
   }, [events, showLiveOnly, selectedCompetition, searchQuery, isToday, searchEventsConverted]);
 
   // Group events by league
-  // Agrupar eventos por liga e ordenar por prioridade
-  const eventosPorLiga = useMemo(() => {
-    const grouped: Record<string, { eventos: EventItem[]; priority: number }> = {};
-    
+  // Separar ligas principais das outras
+  const { mainLeagues, otherByCountry } = useMemo(() => {
+    const main: Record<string, { eventos: EventItem[]; priority: number }> = {};
+    const others: Record<string, Record<string, EventItem[]>> = {}; // país -> liga -> eventos
+
     eventosFiltrados.forEach((evento) => {
-      const key = `${evento.league_country} - ${evento.league}`;
-      if (!grouped[key]) {
-        grouped[key] = {
-          eventos: [],
-          priority: getLeaguePriority(evento.league, evento.league_country),
-        };
+      const isMain = isMainLeague(evento.league, evento.league_country);
+      
+      if (isMain) {
+        const key = `${evento.league_country} - ${evento.league}`;
+        if (!main[key]) {
+          main[key] = {
+            eventos: [],
+            priority: getLeaguePriority(evento.league, evento.league_country),
+          };
+        }
+        main[key].eventos.push(evento);
+      } else {
+        // Agrupar por país, depois por liga
+        const country = evento.league_country || "Outros";
+        const league = evento.league || "Outras Ligas";
+        
+        if (!others[country]) {
+          others[country] = {};
+        }
+        if (!others[country][league]) {
+          others[country][league] = [];
+        }
+        others[country][league].push(evento);
       }
-      grouped[key].eventos.push(evento);
     });
 
-    // Ordenar por prioridade e retornar apenas os eventos
-    const sortedEntries = Object.entries(grouped)
+    // Ordenar ligas principais por prioridade
+    const sortedMain = Object.entries(main)
       .sort(([, a], [, b]) => a.priority - b.priority)
       .map(([key, value]) => [key, value.eventos] as [string, EventItem[]]);
 
-    return Object.fromEntries(sortedEntries) as Record<string, EventItem[]>;
+    // Ordenar eventos dentro de cada liga por horário
+    Object.values(others).forEach((leagues) => {
+      Object.values(leagues).forEach((eventos) => {
+        eventos.sort((a, b) => a.time.localeCompare(b.time));
+      });
+    });
+
+    return {
+      mainLeagues: Object.fromEntries(sortedMain) as Record<string, EventItem[]>,
+      otherByCountry: others,
+    };
   }, [eventosFiltrados]);
+
+  // Para compatibilidade com o código existente
+  const eventosPorLiga = mainLeagues;
 
   const handleRegistrarAposta = (evento: EventItem) => {
     const eventName = `${evento.home_team} x ${evento.away_team}`;
@@ -669,82 +675,167 @@ export default function Eventos() {
               </p>
             </Card>
           ) : (
-            Object.entries(eventosPorLiga).map(([liga, eventos]) => (
-              <Card key={liga} className="overflow-hidden">
-                {/* League Header - Compact */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/30 border-b border-border">
-                  {eventos[0]?.league_logo ? (
-                    <img src={eventos[0].league_logo} alt="" className="w-4 h-4 object-contain" />
-                  ) : (
-                    <span className="text-xs">⚽</span>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-foreground">
-                      {eventos[0]?.league_country}
-                    </span>
-                    <span className="text-xs text-muted-foreground mx-1">▸</span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {eventos[0]?.league}
+            <>
+              {/* Ligas Principais */}
+              {Object.entries(mainLeagues).map(([liga, eventos]) => (
+                <Card key={liga} className="overflow-hidden">
+                  {/* League Header - Compact */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/30 border-b border-border">
+                    {eventos[0]?.league_logo ? (
+                      <img src={eventos[0].league_logo} alt="" className="w-4 h-4 object-contain" />
+                    ) : (
+                      <span className="text-xs">⚽</span>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs font-medium text-foreground">
+                        {eventos[0]?.league_country}
+                      </span>
+                      <span className="text-xs text-muted-foreground mx-1">▸</span>
+                      <span className="text-xs text-muted-foreground truncate">
+                        {eventos[0]?.league}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">
+                      {eventos.length} jogos
                     </span>
                   </div>
-                </div>
 
-                {/* Events - Compact rows */}
-                <div className="divide-y divide-border">
-                  {eventos.map((evento) => (
-                    <div
-                      key={evento.id}
-                      className={cn(
-                        "px-3 py-2 active:bg-secondary/50",
-                        evento.is_live && "bg-primary/5"
-                      )}
-                      onClick={() => handleRegistrarAposta(evento)}
-                    >
-                      {/* Main row: Time + Teams + Arrow */}
-                      <div className="flex items-center gap-2">
-                        {/* Time */}
-                        <div className="w-10 flex-shrink-0 text-center">
-                          {evento.is_live ? (
-                            <span className="text-[11px] text-destructive font-semibold animate-pulse">
-                              LIVE
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground font-medium">{evento.time}</span>
-                          )}
-                        </div>
-
-                        {/* Teams */}
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            {evento.home_team_logo ? (
-                              <img src={evento.home_team_logo} alt="" className="w-4 h-4 object-contain" />
+                  {/* Events - Compact rows */}
+                  <div className="divide-y divide-border">
+                    {eventos.map((evento) => (
+                      <div
+                        key={evento.id}
+                        className={cn(
+                          "px-3 py-2 active:bg-secondary/50",
+                          evento.is_live && "bg-primary/5"
+                        )}
+                        onClick={() => handleRegistrarAposta(evento)}
+                      >
+                        {/* Main row: Time + Teams + Arrow */}
+                        <div className="flex items-center gap-2">
+                          {/* Time */}
+                          <div className="w-10 flex-shrink-0 text-center">
+                            {evento.is_live ? (
+                              <span className="text-[11px] text-destructive font-semibold animate-pulse">
+                                LIVE
+                              </span>
                             ) : (
-                              <div className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold">
-                                {evento.home_team_short.slice(0, 1)}
-                              </div>
+                              <span className="text-xs text-muted-foreground font-medium">{evento.time}</span>
                             )}
-                            <span className="text-xs font-medium truncate">{evento.home_team}</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            {evento.away_team_logo ? (
-                              <img src={evento.away_team_logo} alt="" className="w-4 h-4 object-contain" />
-                            ) : (
-                              <div className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold">
-                                {evento.away_team_short.slice(0, 1)}
-                              </div>
-                            )}
-                            <span className="text-xs font-medium truncate">{evento.away_team}</span>
-                          </div>
-                        </div>
 
-                        {/* Arrow */}
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          {/* Teams */}
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-1.5">
+                              {evento.home_team_logo ? (
+                                <img src={evento.home_team_logo} alt="" className="w-4 h-4 object-contain" />
+                              ) : (
+                                <div className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold">
+                                  {evento.home_team_short.slice(0, 1)}
+                                </div>
+                              )}
+                              <span className="text-xs font-medium truncate">{evento.home_team}</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {evento.away_team_logo ? (
+                                <img src={evento.away_team_logo} alt="" className="w-4 h-4 object-contain" />
+                              ) : (
+                                <div className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold">
+                                  {evento.away_team_short.slice(0, 1)}
+                                </div>
+                              )}
+                              <span className="text-xs font-medium truncate">{evento.away_team}</span>
+                            </div>
+                          </div>
+
+                          {/* Arrow */}
+                          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))
+                    ))}
+                  </div>
+                </Card>
+              ))}
+
+              {/* Outros Países */}
+              {Object.keys(otherByCountry).length > 0 && (
+                <>
+                  <div className="text-xs font-medium text-muted-foreground px-1 pt-2">
+                    Outras Ligas
+                  </div>
+                  {Object.entries(otherByCountry)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([country, leagues]) => (
+                      <Card key={country} className="overflow-hidden">
+                        {/* Country Header */}
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 border-b border-border">
+                          <span className="text-xs font-semibold text-foreground">{country}</span>
+                          <span className="text-[10px] text-muted-foreground ml-auto">
+                            {Object.values(leagues).flat().length} jogos
+                          </span>
+                        </div>
+                        
+                        {Object.entries(leagues).map(([league, eventos]) => (
+                          <div key={league}>
+                            {/* League sub-header */}
+                            <div className="flex items-center gap-2 px-3 py-1 bg-secondary/20 border-b border-border">
+                              <span className="text-[11px] text-muted-foreground">{league}</span>
+                            </div>
+                            {/* Events */}
+                            <div className="divide-y divide-border">
+                              {eventos.map((evento) => (
+                                <div
+                                  key={evento.id}
+                                  className={cn(
+                                    "px-3 py-2 active:bg-secondary/50",
+                                    evento.is_live && "bg-primary/5"
+                                  )}
+                                  onClick={() => handleRegistrarAposta(evento)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-10 flex-shrink-0 text-center">
+                                      {evento.is_live ? (
+                                        <span className="text-[11px] text-destructive font-semibold animate-pulse">
+                                          LIVE
+                                        </span>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground font-medium">{evento.time}</span>
+                                      )}
+                                    </div>
+                                    <div className="flex-1 min-w-0 space-y-0.5">
+                                      <div className="flex items-center gap-1.5">
+                                        {evento.home_team_logo ? (
+                                          <img src={evento.home_team_logo} alt="" className="w-4 h-4 object-contain" />
+                                        ) : (
+                                          <div className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold">
+                                            {evento.home_team_short.slice(0, 1)}
+                                          </div>
+                                        )}
+                                        <span className="text-xs font-medium truncate">{evento.home_team}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        {evento.away_team_logo ? (
+                                          <img src={evento.away_team_logo} alt="" className="w-4 h-4 object-contain" />
+                                        ) : (
+                                          <div className="w-4 h-4 rounded-full bg-secondary flex items-center justify-center text-[8px] font-bold">
+                                            {evento.away_team_short.slice(0, 1)}
+                                          </div>
+                                        )}
+                                        <span className="text-xs font-medium truncate">{evento.away_team}</span>
+                                      </div>
+                                    </div>
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </Card>
+                    ))}
+                </>
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -790,7 +881,7 @@ export default function Eventos() {
                 </Button>
               </div>
             </Card>
-          ) : Object.keys(eventosPorLiga).length === 0 ? (
+          ) : eventosFiltrados.length === 0 ? (
             <Card className="p-8 text-center">
               <div className="flex flex-col items-center gap-3">
                 <Trophy className="h-8 w-8 text-muted-foreground" />
@@ -801,75 +892,164 @@ export default function Eventos() {
               </div>
             </Card>
           ) : (
-            Object.entries(eventosPorLiga).map(([liga, eventos]) => (
-              <Card key={liga} className="overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-2 bg-secondary/50 border-b border-border">
-                  {eventos[0]?.league_logo ? (
-                    <img src={eventos[0].league_logo} alt="" className="w-5 h-5 object-contain" />
-                  ) : (
-                    <span>⚽</span>
-                  )}
-                  <span className="text-sm font-medium">{liga}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {eventos.length} jogos
-                  </span>
-                </div>
-                <div className="divide-y divide-border">
-                  {eventos.map((evento) => (
-                    <div
-                      key={evento.id}
-                      className={cn(
-                        "p-3 flex items-center gap-4 hover:bg-secondary/30",
-                        evento.is_live && "bg-primary/5"
-                      )}
-                    >
-                      <div className="w-16 flex-shrink-0">
-                        {evento.is_live ? (
-                          <Badge variant="destructive" className="gap-1 text-xs animate-pulse">
-                            <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                            LIVE
-                          </Badge>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-muted-foreground">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span className="text-sm">{evento.time}</span>
-                          </div>
+            <>
+              {/* Ligas Principais */}
+              {Object.entries(mainLeagues).map(([liga, eventos]) => (
+                <Card key={liga} className="overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-secondary/50 border-b border-border">
+                    {eventos[0]?.league_logo ? (
+                      <img src={eventos[0].league_logo} alt="" className="w-5 h-5 object-contain" />
+                    ) : (
+                      <span>⚽</span>
+                    )}
+                    <span className="text-sm font-medium">{liga}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {eventos.length} jogos
+                    </span>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {eventos.map((evento) => (
+                      <div
+                        key={evento.id}
+                        className={cn(
+                          "p-3 flex items-center gap-4 hover:bg-secondary/30",
+                          evento.is_live && "bg-primary/5"
                         )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-6">
-                          <div className="flex items-center gap-2 flex-1 justify-end">
-                            <span className="text-sm font-medium truncate">{evento.home_team}</span>
-                            {evento.home_team_logo ? (
-                              <img src={evento.home_team_logo} alt="" className="w-7 h-7 object-contain" />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
-                                {evento.home_team_short.slice(0, 2)}
-                              </div>
-                            )}
-                          </div>
-                          <span className="text-xs text-muted-foreground">vs</span>
-                          <div className="flex items-center gap-2 flex-1">
-                            {evento.away_team_logo ? (
-                              <img src={evento.away_team_logo} alt="" className="w-7 h-7 object-contain" />
-                            ) : (
-                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
-                                {evento.away_team_short.slice(0, 2)}
-                              </div>
-                            )}
-                            <span className="text-sm font-medium truncate">{evento.away_team}</span>
+                      >
+                        <div className="w-16 flex-shrink-0">
+                          {evento.is_live ? (
+                            <Badge variant="destructive" className="gap-1 text-xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              LIVE
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span className="text-sm">{evento.time}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2 flex-1 justify-end">
+                              <span className="text-sm font-medium truncate">{evento.home_team}</span>
+                              {evento.home_team_logo ? (
+                                <img src={evento.home_team_logo} alt="" className="w-7 h-7 object-contain" />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+                                  {evento.home_team_short.slice(0, 2)}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-xs text-muted-foreground">vs</span>
+                            <div className="flex items-center gap-2 flex-1">
+                              {evento.away_team_logo ? (
+                                <img src={evento.away_team_logo} alt="" className="w-7 h-7 object-contain" />
+                              ) : (
+                                <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+                                  {evento.away_team_short.slice(0, 2)}
+                                </div>
+                              )}
+                              <span className="text-sm font-medium truncate">{evento.away_team}</span>
+                            </div>
                           </div>
                         </div>
+                        <Button variant="outline" size="sm" onClick={() => handleRegistrarAposta(evento)}>
+                          Registrar
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => handleRegistrarAposta(evento)}>
-                        Registrar
-                        <ChevronRight className="h-3 w-3 ml-1" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))
+                    ))}
+                  </div>
+                </Card>
+              ))}
+
+              {/* Outros Países */}
+              {Object.keys(otherByCountry).length > 0 && (
+                <>
+                  <div className="text-sm font-medium text-muted-foreground px-1 pt-4">
+                    Outras Ligas por País
+                  </div>
+                  {Object.entries(otherByCountry)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([country, leagues]) => (
+                      <Card key={country} className="overflow-hidden">
+                        {/* Country Header */}
+                        <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border-b border-border">
+                          <span className="text-sm font-semibold text-foreground">{country}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {Object.values(leagues).flat().length} jogos
+                          </span>
+                        </div>
+                        
+                        {Object.entries(leagues).map(([league, eventos]) => (
+                          <div key={league}>
+                            {/* League sub-header */}
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary/30 border-b border-border">
+                              <span className="text-xs text-muted-foreground">{league}</span>
+                            </div>
+                            {/* Events */}
+                            <div className="divide-y divide-border">
+                              {eventos.map((evento) => (
+                                <div
+                                  key={evento.id}
+                                  className={cn(
+                                    "p-3 flex items-center gap-4 hover:bg-secondary/30",
+                                    evento.is_live && "bg-primary/5"
+                                  )}
+                                >
+                                  <div className="w-16 flex-shrink-0">
+                                    {evento.is_live ? (
+                                      <Badge variant="destructive" className="gap-1 text-xs animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                                        LIVE
+                                      </Badge>
+                                    ) : (
+                                      <div className="flex items-center gap-1.5 text-muted-foreground">
+                                        <Clock className="h-3.5 w-3.5" />
+                                        <span className="text-sm">{evento.time}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-6">
+                                      <div className="flex items-center gap-2 flex-1 justify-end">
+                                        <span className="text-sm font-medium truncate">{evento.home_team}</span>
+                                        {evento.home_team_logo ? (
+                                          <img src={evento.home_team_logo} alt="" className="w-7 h-7 object-contain" />
+                                        ) : (
+                                          <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+                                            {evento.home_team_short.slice(0, 2)}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <span className="text-xs text-muted-foreground">vs</span>
+                                      <div className="flex items-center gap-2 flex-1">
+                                        {evento.away_team_logo ? (
+                                          <img src={evento.away_team_logo} alt="" className="w-7 h-7 object-contain" />
+                                        ) : (
+                                          <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold">
+                                            {evento.away_team_short.slice(0, 2)}
+                                          </div>
+                                        )}
+                                        <span className="text-sm font-medium truncate">{evento.away_team}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <Button variant="outline" size="sm" onClick={() => handleRegistrarAposta(evento)}>
+                                    Registrar
+                                    <ChevronRight className="h-3 w-3 ml-1" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </Card>
+                    ))}
+                </>
+              )}
+            </>
           )}
         </div>
       )}
