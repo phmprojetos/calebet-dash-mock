@@ -14,6 +14,7 @@ import Eventos from "./pages/Eventos";
 import Bets from "./pages/Bets";
 import Import from "./pages/Import";
 import Insights from "./pages/Insights";
+import Plans from "./pages/Plans";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -52,6 +53,7 @@ const App = () => (
                             <Route path="/import" element={<Import />} />
                             <Route path="/import/cvs" element={<Import />} />
                             <Route path="/insights" element={<Insights />} />
+                            <Route path="/plans" element={<Plans />} />
                             <Route path="/settings" element={<Settings />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
