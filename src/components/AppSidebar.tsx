@@ -20,8 +20,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const menuItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Eventos", url: "/eventos", icon: CalendarDays },
+  { title: "Eventos", url: "/", icon: CalendarDays },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Minhas Apostas", url: "/bets", icon: FileText },
   { title: "Importar CSV", url: "/import", icon: Upload },
   { title: "Insights", url: "/insights", icon: Lightbulb },

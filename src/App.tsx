@@ -46,8 +46,8 @@ const App = () => (
                         </header>
                         <div className="p-6">
                           <Routes>
-                            <Route path="/" element={<Dashboard />} />
-                            <Route path="/eventos" element={<Eventos />} />
+                            <Route path="/" element={<Eventos />} />
+                            <Route path="/dashboard" element={<Dashboard />} />
                             <Route path="/bets" element={<Bets />} />
                             <Route path="/import" element={<Import />} />
                             <Route path="/import/cvs" element={<Import />} />

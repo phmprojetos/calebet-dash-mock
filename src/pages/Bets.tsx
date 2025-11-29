@@ -60,11 +60,25 @@ export default function Bets() {
   const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(7);
+  const [initialEvent, setInitialEvent] = useState<string | null>(null);
 
   // Formatar data para YYYY-MM-DD
   const formatDateForApi = (date: Date): string => {
     return date.toISOString().split("T")[0];
   };
+
+  // Detectar query param 'event' e abrir dialog automaticamente
+  useEffect(() => {
+    const eventParam = searchParams.get("event");
+    if (eventParam && !dialogOpen && !editingBet) {
+      setInitialEvent(decodeURIComponent(eventParam));
+      setDialogOpen(true);
+      // Remove o query param da URL após usar
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("event");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, dialogOpen, editingBet, setSearchParams]);
 
   const {
     bets,
@@ -663,9 +677,13 @@ export default function Bets() {
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
-          if (!open) setEditingBet(undefined);
+          if (!open) {
+            setEditingBet(undefined);
+            setInitialEvent(null);
+          }
         }}
         bet={editingBet}
+        initialEvent={initialEvent}
         onSave={handleSave}
       />
 
