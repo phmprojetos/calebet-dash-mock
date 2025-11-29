@@ -123,3 +123,4 @@ All colors MUST be HSL.
 [data-sonner-toast][data-type="info"] .toast-with-progress::after {
   background: hsl(var(--info));
 }
+
