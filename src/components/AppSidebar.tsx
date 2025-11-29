@@ -33,8 +33,14 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const { open } = useSidebar();
+  const { open, isMobile, setOpenMobile } = useSidebar();
   const { signOut } = useAuth();
+
+  const handleMenuClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -51,6 +57,7 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       end={item.url === "/"}
+                      onClick={handleMenuClick}
                       className={({ isActive }) =>
                         isActive
                           ? "bg-sidebar-accent text-sidebar-primary font-semibold"
@@ -71,7 +78,10 @@ export function AppSidebar() {
         <Button
           variant="ghost"
           className="w-full justify-start"
-          onClick={signOut}
+          onClick={() => {
+            handleMenuClick();
+            signOut();
+          }}
         >
           <LogOut className="mr-2 h-4 w-4" />
           {open && <span>Sair</span>}
