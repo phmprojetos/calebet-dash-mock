@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -15,9 +14,14 @@ import {
 import { Clock, ChevronRight, ChevronLeft, Trophy, Search, X, Loader2, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useEvents } from "@/hooks/useFixturesSearch";
+import { useEvents, useFixturesSearch } from "@/hooks/useFixturesSearch";
 import { EventItem } from "@/services/fixturesService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BetDialog } from "@/components/BetDialog";
+import { Bet } from "@/lib/mockData";
+import { useBets } from "@/hooks/useBets";
+import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
 
 // Fuso horário de Brasília
 const TIMEZONE_BRASILIA = "America/Sao_Paulo";
@@ -82,14 +86,93 @@ function getDateLabel(date: Date, index: number) {
   return `${getDayOfMonth(date)}/${(date.getMonth() + 1).toString().padStart(2, "0")}`;
 }
 
+// Função para obter a prioridade de uma liga (ordem de exibição)
+function getLeaguePriority(league: string, country: string): number {
+  const leagueLower = league.toLowerCase();
+  const countryLower = country.toLowerCase();
+
+  // Brasileirão tem prioridade máxima
+  if (
+    (leagueLower.includes("brasileirão") || leagueLower.includes("brasileiro")) &&
+    (countryLower.includes("brazil") || countryLower.includes("brasil"))
+  ) {
+    return 0;
+  }
+
+  // Serie A Brasil
+  if (leagueLower.includes("serie a") && (countryLower.includes("brazil") || countryLower.includes("brasil"))) {
+    return 0;
+  }
+
+  // Premier League (Inglaterra)
+  if (leagueLower.includes("premier league") && (countryLower.includes("england") || countryLower.includes("inglaterra"))) {
+    return 1;
+  }
+
+  // Libertadores
+  if (leagueLower.includes("libertadores")) {
+    return 2;
+  }
+
+  // La Liga
+  if (leagueLower.includes("la liga") || leagueLower.includes("laliga")) {
+    return 3;
+  }
+
+  // Bundesliga
+  if (leagueLower.includes("bundesliga")) {
+    return 4;
+  }
+
+  // Serie A Itália
+  if (leagueLower.includes("serie a") && (countryLower.includes("italy") || countryLower.includes("itália"))) {
+    return 5;
+  }
+
+  // Ligue 1
+  if (leagueLower.includes("ligue 1")) {
+    return 6;
+  }
+
+  // Champions League
+  if (leagueLower.includes("champions")) {
+    return 7;
+  }
+
+  // Europa League
+  if (leagueLower.includes("europa league")) {
+    return 8;
+  }
+
+  // Copa do Brasil
+  if (leagueLower.includes("copa do brasil")) {
+    return 9;
+  }
+
+  // Sul-Americana
+  if (leagueLower.includes("sul-americana") || leagueLower.includes("sudamericana")) {
+    return 10;
+  }
+
+  // Demais ligas
+  return 100;
+}
+
 export default function Eventos() {
   const todayKey = formatDateKey(new Date());
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
   const [showLiveOnly, setShowLiveOnly] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCompetition, setSelectedCompetition] = useState<string>("all");
-  const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+
+  // Estado do modal de aposta
+  const [betDialogOpen, setBetDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
+
+  // Hook para criar apostas
+  const { createBetAsync } = useBets();
 
   // Gerar array de 5 dias
   const dias = useMemo(() => {
@@ -108,11 +191,84 @@ export default function Eventos() {
 
   const selectedDate = dias[selectedDateIndex]?.key || todayKey;
 
-  // Buscar eventos da API
+  // Debounce da pesquisa
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  // Buscar eventos da API (eventos do dia)
   const { events, isLoading, isFetching, isError, refetch } = useEvents({
     date: selectedDate,
     limit: 50,
   });
+
+  // Buscar na API quando pesquisar (para encontrar eventos não listados)
+  const { fixtures: searchResults, isLoading: isSearching } = useFixturesSearch({
+    query: debouncedSearchQuery,
+    limit: 20,
+    enabled: debouncedSearchQuery.length >= 2,
+  });
+
+  // Mapeamento de league_id para nome da liga (principais)
+  const leagueIdToName: Record<number, { name: string; country: string }> = {
+    71: { name: "Brasileirão Série A", country: "Brasil" },
+    72: { name: "Brasileirão Série B", country: "Brasil" },
+    73: { name: "Copa do Brasil", country: "Brasil" },
+    39: { name: "Premier League", country: "Inglaterra" },
+    140: { name: "La Liga", country: "Espanha" },
+    135: { name: "Serie A", country: "Itália" },
+    78: { name: "Bundesliga", country: "Alemanha" },
+    61: { name: "Ligue 1", country: "França" },
+    2: { name: "Champions League", country: "Europa" },
+    3: { name: "Europa League", country: "Europa" },
+    13: { name: "Libertadores", country: "América do Sul" },
+    11: { name: "Sul-Americana", country: "América do Sul" },
+    94: { name: "Primeira Liga", country: "Portugal" },
+    88: { name: "Eredivisie", country: "Holanda" },
+    144: { name: "Jupiler Pro League", country: "Bélgica" },
+  };
+
+  // Converter resultados da busca para formato EventItem
+  const searchEventsConverted: EventItem[] = useMemo(() => {
+    if (!searchResults || searchResults.length === 0) return [];
+    
+    return searchResults.map((fixture) => {
+      const leagueInfo = leagueIdToName[fixture.league_id] || { 
+        name: "Outra Liga", 
+        country: "Internacional" 
+      };
+      
+      const fixtureDate = new Date(fixture.date);
+      const dateStr = fixtureDate.toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: TIMEZONE_BRASILIA,
+      });
+      const timeStr = fixtureDate.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: TIMEZONE_BRASILIA,
+      });
+      
+      return {
+        id: `search-${fixture.id}`,
+        fixture_id: fixture.id,
+        date: fixture.date.split("T")[0],
+        time: `${dateStr} ${timeStr}`,
+        league: leagueInfo.name,
+        league_country: leagueInfo.country,
+        league_logo: null,
+        home_team: fixture.home_team_name,
+        away_team: fixture.away_team_name,
+        home_team_short: fixture.home_team_name.slice(0, 3).toUpperCase(),
+        away_team_short: fixture.away_team_name.slice(0, 3).toUpperCase(),
+        home_team_logo: fixture.home_team_logo || null,
+        away_team_logo: fixture.away_team_logo || null,
+        home_odd: null,
+        draw_odd: null,
+        away_odd: null,
+        is_live: false,
+      };
+    });
+  }, [searchResults]);
 
   // Extrair lista única de competições dos eventos
   const competicoes = useMemo(() => {
@@ -154,15 +310,22 @@ export default function Eventos() {
       });
     }
 
-    // Filtro por pesquisa
+    // Filtro por pesquisa local
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter((evento) => {
+      const localFiltered = filtered.filter((evento) => {
         const homeTeam = evento.home_team.toLowerCase();
         const awayTeam = evento.away_team.toLowerCase();
         const league = evento.league.toLowerCase();
         return homeTeam.includes(query) || awayTeam.includes(query) || league.includes(query);
       });
+
+      // Se não encontrou localmente e temos resultados da API, usar resultados da API
+      if (localFiltered.length === 0 && searchEventsConverted.length > 0) {
+        filtered = searchEventsConverted;
+      } else {
+        filtered = localFiltered;
+      }
     }
 
     // Ordenação por proximidade do horário atual (Brasília)
@@ -200,24 +363,62 @@ export default function Eventos() {
       // Entre passados: ordenar por mais recente primeiro
       return diffB - diffA;
     });
-  }, [events, showLiveOnly, selectedCompetition, searchQuery, isToday]);
+  }, [events, showLiveOnly, selectedCompetition, searchQuery, isToday, searchEventsConverted]);
 
   // Group events by league
+  // Agrupar eventos por liga e ordenar por prioridade
   const eventosPorLiga = useMemo(() => {
-    const grouped: Record<string, EventItem[]> = {};
+    const grouped: Record<string, { eventos: EventItem[]; priority: number }> = {};
+    
     eventosFiltrados.forEach((evento) => {
       const key = `${evento.league_country} - ${evento.league}`;
       if (!grouped[key]) {
-        grouped[key] = [];
+        grouped[key] = {
+          eventos: [],
+          priority: getLeaguePriority(evento.league, evento.league_country),
+        };
       }
-      grouped[key].push(evento);
+      grouped[key].eventos.push(evento);
     });
-    return grouped;
+
+    // Ordenar por prioridade e retornar apenas os eventos
+    const sortedEntries = Object.entries(grouped)
+      .sort(([, a], [, b]) => a.priority - b.priority)
+      .map(([key, value]) => [key, value.eventos] as [string, EventItem[]]);
+
+    return Object.fromEntries(sortedEntries) as Record<string, EventItem[]>;
   }, [eventosFiltrados]);
 
   const handleRegistrarAposta = (evento: EventItem) => {
     const eventName = `${evento.home_team} x ${evento.away_team}`;
-    navigate(`/bets?event=${encodeURIComponent(eventName)}`);
+    setSelectedEvent(eventName);
+    setBetDialogOpen(true);
+  };
+
+  const handleSaveBet = async (bet: Bet) => {
+    try {
+      await createBetAsync({
+        home_team: bet.home_team || "",
+        away_team: bet.away_team || "",
+        market: bet.market,
+        odd: bet.odd,
+        stake: bet.stake,
+        source: "eventos",
+        is_live: bet.is_live,
+      });
+      toast({
+        title: "Aposta registrada!",
+        description: `Aposta em "${bet.home_team} x ${bet.away_team}" criada com sucesso.`,
+      });
+      setBetDialogOpen(false);
+      setSelectedEvent(null);
+    } catch (error) {
+      toast({
+        title: "Erro ao registrar",
+        description: "Não foi possível criar a aposta. Tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Contar jogos ao vivo (só conta se for hoje)
@@ -259,7 +460,10 @@ export default function Eventos() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 pr-9 h-10"
             />
-            {searchQuery && (
+            {isSearching && searchQuery.length >= 2 && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+            )}
+            {searchQuery && !isSearching && (
               <button
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -398,7 +602,10 @@ export default function Eventos() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 pr-9"
               />
-              {searchQuery && (
+              {isSearching && searchQuery.length >= 2 && (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />
+              )}
+              {searchQuery && !isSearching && (
                 <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
@@ -533,25 +740,6 @@ export default function Eventos() {
                         {/* Arrow */}
                         <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       </div>
-
-                      {/* Odds row - Below teams */}
-                      {(evento.home_odd || evento.draw_odd || evento.away_odd) && (
-                        <div className="flex gap-1.5 mt-2 ml-10">
-                          {[
-                            { label: "1", value: evento.home_odd },
-                            { label: "X", value: evento.draw_odd },
-                            { label: "2", value: evento.away_odd },
-                          ].map((odd) => (
-                            <div
-                              key={odd.label}
-                              className="flex-1 flex items-center justify-center gap-1 py-1.5 bg-secondary/60 rounded text-[11px]"
-                            >
-                              <span className="text-muted-foreground">{odd.label}</span>
-                              <span className="font-semibold">{odd.value ? odd.value.toFixed(2) : "-"}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -673,21 +861,6 @@ export default function Eventos() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {[
-                          { label: "1", value: evento.home_odd },
-                          { label: "X", value: evento.draw_odd },
-                          { label: "2", value: evento.away_odd },
-                        ].map((odd) => (
-                          <button
-                            key={odd.label}
-                            className="flex flex-col items-center w-14 py-1.5 rounded-lg bg-secondary/80 hover:bg-primary/20 border border-transparent hover:border-primary/30"
-                          >
-                            <span className="text-[10px] text-muted-foreground">{odd.label}</span>
-                            <span className="text-sm font-bold">{odd.value?.toFixed(2) || "-"}</span>
-                          </button>
-                        ))}
-                      </div>
                       <Button variant="outline" size="sm" onClick={() => handleRegistrarAposta(evento)}>
                         Registrar
                         <ChevronRight className="h-3 w-3 ml-1" />
@@ -708,6 +881,17 @@ export default function Eventos() {
           <span className="text-xs text-muted-foreground">Atualizando...</span>
         </div>
       )}
+
+      {/* Modal de Aposta */}
+      <BetDialog
+        open={betDialogOpen}
+        onOpenChange={(open) => {
+          setBetDialogOpen(open);
+          if (!open) setSelectedEvent(null);
+        }}
+        initialEvent={selectedEvent}
+        onSave={handleSaveBet}
+      />
     </div>
   );
 }
