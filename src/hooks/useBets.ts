@@ -36,6 +36,15 @@ export const useBets = (options: UseBetsOptions = {}) => {
 
   const { filter, start_date, end_date, page = 1, limit = 20 } = options;
 
+  // Resposta vazia para mostrar imediatamente
+  const emptyResponse = {
+    items: [],
+    total: 0,
+    page: 1,
+    limit: limit,
+    total_pages: 1,
+  };
+
   // Query para listar apostas com paginação
   const betsQuery = useQuery({
     queryKey: ["bets", userId, { filter, start_date, end_date, page, limit }],
@@ -48,6 +57,16 @@ export const useBets = (options: UseBetsOptions = {}) => {
         page,
         limit,
       }),
+    // Mostra vazio imediatamente enquanto busca
+    placeholderData: emptyResponse,
+    // Não retry em 404
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 404) return false;
+      }
+      return failureCount < 2;
+    },
   });
 
   // Mutation para criar aposta

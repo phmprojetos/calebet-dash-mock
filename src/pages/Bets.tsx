@@ -61,20 +61,6 @@ export default function Bets() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(7);
 
-  // Mapear período para filtro da API
-  const getApiFilter = (period: DateRangePeriod): "today" | "this_week" | "this_month" | undefined => {
-    switch (period) {
-      case "today":
-        return "today";
-      case "7days":
-        return "this_week";
-      case "30days":
-        return "this_month";
-      default:
-        return undefined;
-    }
-  };
-
   // Formatar data para YYYY-MM-DD
   const formatDateForApi = (date: Date): string => {
     return date.toISOString().split("T")[0];
@@ -82,9 +68,6 @@ export default function Bets() {
 
   const {
     bets,
-    total,
-    page,
-    totalPages,
     isLoading,
     createBetAsync,
     updateBet,
@@ -92,12 +75,14 @@ export default function Bets() {
     isDeleting,
     isCreating,
   } = useBets({
-    filter: selectedPeriod !== "custom" && selectedPeriod !== "all" ? getApiFilter(selectedPeriod) : undefined,
-    start_date: selectedPeriod === "custom" || selectedPeriod === "all" ? formatDateForApi(startDate) : undefined,
-    end_date: selectedPeriod === "custom" || selectedPeriod === "all" ? formatDateForApi(endDate) : undefined,
-    page: currentPage,
-    limit: itemsPerPage,
+    // Sempre usar start_date e end_date para garantir filtro correto
+    start_date: formatDateForApi(startDate),
+    end_date: formatDateForApi(endDate),
+    // Buscar mais dados para permitir filtragem no frontend
+    page: 1,
+    limit: 100, // API max é 100
   });
+
 
   // Os dados já vêm ordenados e paginados da API
   const sortedBets = useMemo(
@@ -132,6 +117,18 @@ export default function Bets() {
       return matchesResult && matchesMarket;
     });
   }, [marketFilter, resultFilter, sortedBets]);
+
+  // Calcular paginação baseada nos dados filtrados
+  const total = filteredBets.length;
+  const totalPages = Math.max(1, Math.ceil(total / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
+
+  // Paginar os resultados filtrados
+  const paginatedBets = useMemo(() => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredBets.slice(startIndex, endIndex);
+  }, [filteredBets, page, itemsPerPage]);
 
   const handleDateRangeChange = (start: Date, end: Date) => {
     setStartDate(new Date(start));
@@ -354,7 +351,7 @@ export default function Bets() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Minhas Apostas</h1>
           <p className="text-sm md:text-base text-muted-foreground">Gerencie todas as suas apostas</p>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Exibindo {filteredBets.length} de {total} apostas • Página {page} de {totalPages}
+            Exibindo {paginatedBets.length} de {total} apostas{totalPages > 1 ? ` • Página ${page} de ${totalPages}` : ""}
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
@@ -435,7 +432,7 @@ export default function Bets() {
                 </CardContent>
               </Card>
             ))
-          ) : filteredBets.length === 0 ? (
+          ) : paginatedBets.length === 0 ? (
             <Card>
               <CardContent className="p-6 text-center text-muted-foreground">
                 Nenhuma aposta encontrada para os filtros selecionados. Ajuste os filtros ou
@@ -443,7 +440,7 @@ export default function Bets() {
               </CardContent>
             </Card>
           ) : (
-            filteredBets.map((bet) => (
+            paginatedBets.map((bet) => (
               <Card key={bet.id} className="overflow-hidden">
                 <CardContent className="p-4">
                   {/* Header com evento e resultado */}
@@ -557,7 +554,7 @@ export default function Bets() {
                     ))}
                   </TableRow>
                 ))
-              ) : filteredBets.length === 0 ? (
+              ) : paginatedBets.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={9} className="text-center text-muted-foreground">
                     Nenhuma aposta encontrada para os filtros selecionados. Ajuste os filtros ou
@@ -565,7 +562,7 @@ export default function Bets() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredBets.map((bet) => (
+                paginatedBets.map((bet) => (
                   <TableRow key={bet.id}>
                     <TableCell className="font-mono text-sm">{bet.id}</TableCell>
                     <TableCell className="font-medium">{bet.event}</TableCell>
