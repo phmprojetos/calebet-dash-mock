@@ -3,7 +3,10 @@
 export interface Bet {
   id: string;
   user_id?: string;
-  event: string;
+  fixture_id?: number | null; // ID da partida (API-Football)
+  home_team?: string | null; // Nome do time da casa
+  away_team?: string | null; // Nome do time visitante
+  event: string; // Gerado automaticamente como "{home_team} vs {away_team}"
   market: string;
   odd: number;
   stake: number;
@@ -15,6 +18,36 @@ export interface Bet {
   image_url?: string | null;
   created_at: string;
   updated_at?: string | null;
+}
+
+// Interface para resultado da busca de fixtures
+export interface FixtureSearchResult {
+  id: number;
+  event_name: string;
+  home_team_name: string;
+  away_team_name: string;
+  home_team_logo?: string | null;
+  away_team_logo?: string | null;
+  date: string; // ISO 8601
+  league_id: number;
+}
+
+// Interface para ligas
+export interface League {
+  id: number;
+  name: string;
+  country: string;
+  country_code: string;
+  logo?: string | null;
+  type: string;
+  season: number;
+}
+
+// Interface para status da API
+export interface ApiStatus {
+  remaining_requests: number;
+  max_requests_per_day: number;
+  usage_percent: number;
 }
 
 export interface PaginatedBetsResponse {

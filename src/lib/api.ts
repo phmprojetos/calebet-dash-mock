@@ -1,7 +1,9 @@
 import axios, { isAxiosError } from "axios";
 
 // Configuração base da API
-export const API_BASE_URL = "https://calebet-backend.onrender.com";
+// Em desenvolvimento local: http://localhost:8000
+// Em produção: https://calebet-backend.onrender.com
+export const API_BASE_URL = import.meta.env.VITE_API_URL || "https://calebet-backend.onrender.com";
 
 // User ID fixo para desenvolvimento (será substituído por autenticação real depois)
 export const DEMO_USER_ID = "user-demo-001";
