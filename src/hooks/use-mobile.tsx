@@ -11,13 +11,40 @@ export function useIsMobile() {
   });
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
-    const onChange = () => {
+    const checkIsMobile = () => {
       setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     };
-    mql.addEventListener("change", onChange);
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    return () => mql.removeEventListener("change", onChange);
+
+    // Usar matchMedia para detecção mais confiável
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    
+    // Função para atualizar baseado no matchMedia
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsMobile(e.matches);
+    };
+
+    // Verificar inicialmente
+    setIsMobile(mql.matches);
+
+    // Adicionar listener do matchMedia (mais confiável para DevTools)
+    if (mql.addEventListener) {
+      mql.addEventListener("change", handleMediaChange);
+    } else {
+      // Fallback para navegadores antigos
+      mql.addListener(handleMediaChange);
+    }
+
+    // Também adicionar listener de resize como fallback
+    window.addEventListener("resize", checkIsMobile);
+
+    return () => {
+      if (mql.removeEventListener) {
+        mql.removeEventListener("change", handleMediaChange);
+      } else {
+        mql.removeListener(handleMediaChange);
+      }
+      window.removeEventListener("resize", checkIsMobile);
+    };
   }, []);
 
   return isMobile;
