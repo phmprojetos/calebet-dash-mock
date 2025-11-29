@@ -528,7 +528,7 @@ export default function Dashboard() {
                     <div className="space-y-2">
                       <p className="text-2xl font-bold">{worstMarketKey}</p>
                       <div className="text-sm text-muted-foreground">
-                        <p>Perda: R$ {Math.abs(worstMarketLoss).toLocaleString("pt-BR")}</p>
+                        <p>Perda: -R$ {Math.abs(worstMarketLoss).toLocaleString("pt-BR")}</p>
                       </div>
                     </div>
                   ) : (
