@@ -8,6 +8,7 @@ import {
   LogOut,
   TrendingUp,
   User,
+  CreditCard,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import {
@@ -25,6 +26,7 @@ const menuItems = [
   { title: "Minhas Apostas", url: "/bets", icon: FileText },
   { title: "Importar CSV", url: "/import", icon: Upload },
   { title: "Insights", url: "/insights", icon: Lightbulb },
+  { title: "Planos e Pagamento", url: "/plans", icon: CreditCard },
   { title: "Configurações", url: "/settings", icon: Settings },
 ];
 
