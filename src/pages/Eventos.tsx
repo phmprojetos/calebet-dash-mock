@@ -19,9 +19,34 @@ import { useEvents } from "@/hooks/useFixturesSearch";
 import { EventItem } from "@/services/fixturesService";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Fuso horário de Brasília
+const TIMEZONE_BRASILIA = "America/Sao_Paulo";
+
+// Obter data atual em Brasília
+function getNowInBrasilia() {
+  return new Date(new Date().toLocaleString("en-US", { timeZone: TIMEZONE_BRASILIA }));
+}
+
+// Obter horário atual em minutos (Brasília)
+function getCurrentMinutesBrasilia() {
+  const now = getNowInBrasilia();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
 // Utility functions
 function formatDateKey(date: Date) {
-  return date.toISOString().split("T")[0];
+  // Formatar data no fuso de Brasília
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: TIMEZONE_BRASILIA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  };
+  const parts = new Intl.DateTimeFormat("en-CA", options).formatToParts(date);
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+  return `${year}-${month}-${day}`;
 }
 
 function addDays(date: Date, days: number) {
@@ -31,7 +56,7 @@ function addDays(date: Date, days: number) {
 }
 
 function getWeekdayShort(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
+  return new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: TIMEZONE_BRASILIA })
     .format(date)
     .replace(".", "")
     .toUpperCase()
@@ -39,11 +64,13 @@ function getWeekdayShort(date: Date) {
 }
 
 function getDayOfMonth(date: Date) {
-  return date.getDate();
+  return parseInt(
+    new Intl.DateTimeFormat("pt-BR", { day: "numeric", timeZone: TIMEZONE_BRASILIA }).format(date)
+  );
 }
 
 function getMonthShort(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", { month: "short" })
+  return new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: TIMEZONE_BRASILIA })
     .format(date)
     .replace(".", "")
     .toUpperCase();
@@ -97,12 +124,26 @@ export default function Eventos() {
     return Array.from(unique).sort();
   }, [events]);
 
+  // Verificar se a data selecionada é hoje
+  const isToday = selectedDateIndex === 0;
+
   const eventosFiltrados = useMemo(() => {
     let filtered = [...events];
 
-    // Filtro ao vivo
+    // Corrigir is_live: só pode ser true se for hoje
+    filtered = filtered.map((e) => ({
+      ...e,
+      is_live: isToday ? e.is_live : false,
+    }));
+
+    // Filtro ao vivo (só funciona para hoje)
     if (showLiveOnly) {
-      filtered = filtered.filter((e) => e.is_live);
+      if (!isToday) {
+        // Se não é hoje, não há jogos ao vivo
+        filtered = [];
+      } else {
+        filtered = filtered.filter((e) => e.is_live);
+      }
     }
 
     // Filtro por competição
@@ -124,9 +165,8 @@ export default function Eventos() {
       });
     }
 
-    // Ordenação por proximidade do horário atual (live misturado com pré-live)
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    // Ordenação por proximidade do horário atual (Brasília)
+    const currentMinutes = getCurrentMinutesBrasilia();
 
     const parseTime = (time: string) => {
       const match = time.match(/(\d{1,2}):(\d{2})/);
@@ -160,7 +200,7 @@ export default function Eventos() {
       // Entre passados: ordenar por mais recente primeiro
       return diffB - diffA;
     });
-  }, [events, showLiveOnly, selectedCompetition, searchQuery]);
+  }, [events, showLiveOnly, selectedCompetition, searchQuery, isToday]);
 
   // Group events by league
   const eventosPorLiga = useMemo(() => {
@@ -180,17 +220,28 @@ export default function Eventos() {
     navigate(`/bets?event=${encodeURIComponent(eventName)}`);
   };
 
-  const liveCount = events.filter((e) => e.is_live).length;
+  // Contar jogos ao vivo (só conta se for hoje)
+  const liveCount = isToday ? events.filter((e) => e.is_live).length : 0;
 
   const handlePrevDay = () => {
     if (selectedDateIndex > 0) {
-      setSelectedDateIndex(selectedDateIndex - 1);
+      const newIndex = selectedDateIndex - 1;
+      setSelectedDateIndex(newIndex);
+      // Resetar filtro ao vivo se sair de hoje
+      if (newIndex !== 0) {
+        setShowLiveOnly(false);
+      }
     }
   };
 
   const handleNextDay = () => {
     if (selectedDateIndex < dias.length - 1) {
-      setSelectedDateIndex(selectedDateIndex + 1);
+      const newIndex = selectedDateIndex + 1;
+      setSelectedDateIndex(newIndex);
+      // Resetar filtro ao vivo se sair de hoje
+      if (newIndex !== 0) {
+        setShowLiveOnly(false);
+      }
     }
   };
 
@@ -220,19 +271,22 @@ export default function Eventos() {
 
           {/* Navigation: Live + Date */}
           <div className="flex items-center gap-2">
-            {/* Live Button */}
+            {/* Live Button - só habilitado para hoje */}
             <Button
               variant={showLiveOnly ? "default" : "outline"}
               size="sm"
               className={cn(
                 "gap-1.5 h-9",
-                showLiveOnly && "bg-destructive hover:bg-destructive/90"
+                showLiveOnly && "bg-destructive hover:bg-destructive/90",
+                !isToday && "opacity-50"
               )}
-              onClick={() => setShowLiveOnly(!showLiveOnly)}
+              onClick={() => isToday && setShowLiveOnly(!showLiveOnly)}
+              disabled={!isToday}
             >
               <span className={cn(
                 "w-2 h-2 rounded-full",
-                showLiveOnly ? "bg-white animate-pulse" : "bg-destructive"
+                showLiveOnly ? "bg-white animate-pulse" : "bg-destructive",
+                !isToday && "opacity-50"
               )} />
               Ao vivo
               {liveCount > 0 && (
@@ -310,7 +364,10 @@ export default function Eventos() {
                   return (
                     <button
                       key={dia.key}
-                      onClick={() => setSelectedDateIndex(index)}
+                      onClick={() => {
+                        setSelectedDateIndex(index);
+                        if (index !== 0) setShowLiveOnly(false);
+                      }}
                       className={cn(
                         "flex flex-col items-center justify-center rounded-lg transition-all min-w-[48px] py-2 px-2 flex-shrink-0",
                         isSelected
