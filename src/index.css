@@ -73,3 +73,53 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Toast progress bar animation */
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Sonner toast progress bar */
+[data-sonner-toast] {
+  padding-bottom: 12px !important;
+}
+
+.toast-with-progress::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: hsl(var(--success));
+  transform-origin: left;
+  animation: toast-progress 4000ms linear forwards;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* Pause progress bar on hover */
+[data-sonner-toast]:hover .toast-with-progress::after {
+  animation-play-state: paused;
+}
+
+/* Different colors for different toast types */
+[data-sonner-toast][data-type="success"] .toast-with-progress::after {
+  background: hsl(var(--success));
+}
+
+[data-sonner-toast][data-type="error"] .toast-with-progress::after {
+  background: hsl(var(--destructive));
+}
+
+[data-sonner-toast][data-type="warning"] .toast-with-progress::after {
+  background: hsl(var(--warning));
+}
+
+[data-sonner-toast][data-type="info"] .toast-with-progress::after {
+  background: hsl(var(--info));
+}
