@@ -59,7 +59,7 @@ export default function Bets() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(20);
+  const [itemsPerPage] = useState(7);
 
   // Mapear período para filtro da API
   const getApiFilter = (period: DateRangePeriod): "today" | "this_week" | "this_month" | undefined => {

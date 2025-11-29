@@ -168,9 +168,12 @@ export function DateRangeFilter({
           <Button
             variant={currentPeriod === "custom" ? "default" : "outline"}
             size="sm"
-            className={cn("w-full justify-start text-left font-normal text-xs sm:text-sm")}
+            className={cn(
+              "w-full font-normal text-xs sm:text-sm",
+              dateRange?.from ? "justify-start text-left" : "justify-center text-center"
+            )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+            <CalendarIcon className={cn("h-4 w-4 flex-shrink-0", dateRange?.from ? "mr-2" : "mr-2")} />
             {dateRange?.from ? (
               dateRange.to ? (
                 <>
