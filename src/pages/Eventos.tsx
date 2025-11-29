@@ -124,39 +124,41 @@ export default function Eventos() {
       });
     }
 
-    // Ordenação: Live primeiro, depois por proximidade do horário atual
+    // Ordenação por proximidade do horário atual (live misturado com pré-live)
     const now = new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
+    const parseTime = (time: string) => {
+      const match = time.match(/(\d{1,2}):(\d{2})/);
+      if (match) {
+        return parseInt(match[1]) * 60 + parseInt(match[2]);
+      }
+      return 0;
+    };
+
     return filtered.sort((a, b) => {
-      // Live sempre primeiro
-      if (a.is_live && !b.is_live) return -1;
-      if (!a.is_live && b.is_live) return 1;
+      // Jogos ao vivo têm prioridade máxima (horário = agora)
+      const timeA = a.is_live ? currentMinutes : parseTime(a.time);
+      const timeB = b.is_live ? currentMinutes : parseTime(b.time);
 
-      // Se ambos são live ou ambos não são, ordenar por proximidade do horário
-      const parseTime = (time: string) => {
-        const match = time.match(/(\d{1,2}):(\d{2})/);
-        if (match) {
-          return parseInt(match[1]) * 60 + parseInt(match[2]);
-        }
-        return 0;
-      };
+      // Calcular diferença do horário atual
+      const diffA = timeA - currentMinutes;
+      const diffB = timeB - currentMinutes;
 
-      const timeA = parseTime(a.time);
-      const timeB = parseTime(b.time);
-
-      // Calcular diferença absoluta do horário atual
-      const diffA = Math.abs(timeA - currentMinutes);
-      const diffB = Math.abs(timeB - currentMinutes);
-
-      // Jogos futuros têm prioridade sobre jogos passados
-      const isFutureA = timeA >= currentMinutes;
-      const isFutureB = timeB >= currentMinutes;
+      // Jogos futuros (diff >= 0) vêm antes de jogos passados (diff < 0)
+      const isFutureA = diffA >= 0 || a.is_live;
+      const isFutureB = diffB >= 0 || b.is_live;
 
       if (isFutureA && !isFutureB) return -1;
       if (!isFutureA && isFutureB) return 1;
 
-      return diffA - diffB;
+      // Entre futuros: ordenar por mais próximo primeiro
+      if (isFutureA && isFutureB) {
+        return diffA - diffB;
+      }
+
+      // Entre passados: ordenar por mais recente primeiro
+      return diffB - diffA;
     });
   }, [events, showLiveOnly, selectedCompetition, searchQuery]);
 
