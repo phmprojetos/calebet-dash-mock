@@ -51,11 +51,13 @@ export default function Dashboard() {
   const hasApiMonthlyPerformance =
     (filteredStats?.monthly_performance?.length ?? 0) > 0;
 
-  const { data: userBets = [], isLoading: isLoadingBets } = useQuery({
-    queryKey: ["bets", user?.id || ""],
-    queryFn: () => betsService.getBets(user?.id || ""),
+  const { data: userBetsResponse, isLoading: isLoadingBets } = useQuery({
+    queryKey: ["bets-all", user?.id || ""],
+    queryFn: () => betsService.getBets({ user_id: user?.id || "", limit: 100 }),
     enabled: !!user?.id,
   });
+  
+  const userBets = userBetsResponse?.items || [];
 
   const betsInPeriod = useMemo(() => {
     if (!userBets.length) {
