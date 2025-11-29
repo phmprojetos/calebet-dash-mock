@@ -7,11 +7,31 @@ export interface Bet {
   market: string;
   odd: number;
   stake: number;
+  payout_value?: number | null;
+  profit: number | null;
   result: "win" | "loss" | "pending" | "void" | "cashout";
-  profit: number;
+  is_live?: boolean;
+  source?: string;
+  image_url?: string | null;
   created_at: string;
   updated_at?: string | null;
-  source?: string;
+}
+
+export interface PaginatedBetsResponse {
+  items: Bet[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface GetBetsParams {
+  user_id?: string;
+  filter?: "today" | "this_week" | "this_month";
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  limit?: number;
 }
 
 export interface MarketStats {

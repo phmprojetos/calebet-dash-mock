@@ -40,7 +40,8 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
 
   useEffect(() => {
     if (bet) {
-      setFormData(bet);
+      // Converter profit null para 0 para o formulário
+      setFormData({ ...bet, profit: bet.profit ?? 0 });
     } else {
       setFormData({
         id: `BET-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
