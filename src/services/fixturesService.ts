@@ -316,7 +316,7 @@ export const fixturesService = {
         queryParams.date = date;
       }
 
-      const response = await api.get("/fixtures/events", { params: queryParams });
+      const response = await api.get("/fixtures/events/v2", { params: queryParams });
       console.log("[fixturesService] Events response:", response.data);
 
       const data = response.data;
