@@ -311,6 +311,8 @@ export default function Bets() {
       updateBet({
         betId: bet.id,
         data: {
+          home_team: bet.home_team || undefined,
+          away_team: bet.away_team || undefined,
           event: bet.event,
           market: bet.market,
           odd: bet.odd,
@@ -325,26 +327,34 @@ export default function Bets() {
     }
     setEditingBet(undefined);
     setDialogOpen(false);
+    setInitialEvent(null);
   };
 
   const handleConfirmCreate = async () => {
     if (!pendingConfirmationBet) return;
 
+    // Gerar evento se não existir
+    const eventName =
+      pendingConfirmationBet.event ||
+      (pendingConfirmationBet.home_team && pendingConfirmationBet.away_team
+        ? `${pendingConfirmationBet.home_team} vs ${pendingConfirmationBet.away_team}`
+        : pendingConfirmationBet.home_team || "");
+
     try {
       await toast.promise(
         createBetAsync({
-          event: pendingConfirmationBet.event,
+          fixture_id: pendingConfirmationBet.fixture_id || undefined,
+          home_team: pendingConfirmationBet.home_team || "",
+          away_team: pendingConfirmationBet.away_team || "",
           market: pendingConfirmationBet.market,
           odd: pendingConfirmationBet.odd,
           stake: pendingConfirmationBet.stake,
-          result: pendingConfirmationBet.result,
-          profit: pendingConfirmationBet.profit,
-          created_at: pendingConfirmationBet.created_at,
+          is_live: pendingConfirmationBet.is_live,
         }),
         {
           loading: "Confirmando aposta...",
-          success: pendingConfirmationBet.event?.trim()
-            ? `Aposta em "${pendingConfirmationBet.event}" criada com sucesso.`
+          success: eventName?.trim()
+            ? `Aposta em "${eventName}" criada com sucesso.`
             : "Aposta criada com sucesso.",
           error: "Não foi possível criar a aposta. Tente novamente.",
         },
@@ -705,7 +715,12 @@ export default function Bets() {
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Evento</span>
-              <span className="font-medium text-right">{pendingConfirmationBet?.event}</span>
+              <span className="font-medium text-right">
+                {pendingConfirmationBet?.event ||
+                  (pendingConfirmationBet?.home_team && pendingConfirmationBet?.away_team
+                    ? `${pendingConfirmationBet.home_team} vs ${pendingConfirmationBet.away_team}`
+                    : pendingConfirmationBet?.home_team || "-")}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Mercado</span>

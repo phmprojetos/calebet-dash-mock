@@ -54,6 +54,22 @@ const normalizeNumberOrNull = (value: unknown): number | null => {
   return null;
 };
 
+const normalizeIntegerOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return Math.floor(value);
+  if (typeof value === "string") {
+    const parsed = parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const normalizeStringOrNull = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "string" && value.length > 0) return value;
+  return null;
+};
+
 const normalizeBet = (rawBet: unknown): Bet => {
   const bet = ensureRecord(rawBet);
   // ordem_id é o novo campo primário da API
@@ -69,6 +85,9 @@ const normalizeBet = (rawBet: unknown): Bet => {
   ]);
 
   const rawUserId = getValue(bet, ["user_id", "userId"]);
+  const rawFixtureId = getValue(bet, ["fixture_id", "fixtureId"]);
+  const rawHomeTeam = getValue(bet, ["home_team", "homeTeam", "home_team_name"]);
+  const rawAwayTeam = getValue(bet, ["away_team", "awayTeam", "away_team_name"]);
   const rawEvent = getValue(bet, ["event", "event_name", "fixture", "match", "game"]);
   const rawMarket = getValue(bet, ["market", "market_name", "selection", "strategy"]);
   const rawCreatedAt =
@@ -80,10 +99,22 @@ const normalizeBet = (rawBet: unknown): Bet => {
   const rawIsLive = getValue(bet, ["is_live", "isLive", "live"]);
   const rawImageUrl = getValue(bet, ["image_url", "imageUrl", "image"]);
 
+  const homeTeam = normalizeStringOrNull(rawHomeTeam);
+  const awayTeam = normalizeStringOrNull(rawAwayTeam);
+
+  // Se event não existir mas temos home_team e away_team, gerar automaticamente
+  let event = typeof rawEvent === "string" ? rawEvent : "";
+  if (!event && homeTeam && awayTeam) {
+    event = `${homeTeam} vs ${awayTeam}`;
+  }
+
   return {
     id: rawId ? String(rawId) : `bet-${Math.random().toString(36).slice(2)}`,
     user_id: typeof rawUserId === "string" ? rawUserId : undefined,
-    event: typeof rawEvent === "string" ? rawEvent : "",
+    fixture_id: normalizeIntegerOrNull(rawFixtureId),
+    home_team: homeTeam,
+    away_team: awayTeam,
+    event,
     market: typeof rawMarket === "string" ? rawMarket : "",
     odd: normalizeNumber(getValue(bet, ["odd", "odds", "price"])),
     stake: normalizeNumber(getValue(bet, ["stake", "amount", "value"])),
@@ -171,7 +202,36 @@ const parseSingleBet = (payload: unknown): Bet => {
   return normalizeBet(unwrapped ?? {});
 };
 
-export interface CreateBetDTO {
+// DTO para criar aposta - Opção A: Com Fixture Selecionado (Recomendado)
+export interface CreateBetWithFixtureDTO {
+  user_id: string;
+  fixture_id: number;
+  home_team: string;
+  away_team: string;
+  market: string;
+  odd: number;
+  stake: number;
+  source?: string;
+  is_live?: boolean;
+}
+
+// DTO para criar aposta - Opção B: Entrada Manual
+export interface CreateBetManualDTO {
+  user_id: string;
+  home_team: string;
+  away_team: string;
+  market: string;
+  odd: number;
+  stake: number;
+  source?: string;
+  is_live?: boolean;
+}
+
+// DTO unificado que suporta ambos os modos
+export type CreateBetDTO = CreateBetWithFixtureDTO | CreateBetManualDTO;
+
+// DTO legado para compatibilidade com código existente
+export interface CreateBetLegacyDTO {
   user_id: string;
   event: string;
   market: string;
@@ -184,6 +244,8 @@ export interface CreateBetDTO {
 }
 
 export interface UpdateBetDTO {
+  home_team?: string;
+  away_team?: string;
   event?: string;
   market?: string;
   odd?: number;
@@ -229,14 +291,48 @@ export const betsService = {
     ]);
   },
 
-  // Criar nova aposta
-  createBet: async (bet: Omit<CreateBetDTO, "user_id"> & { user_id?: string }): Promise<Bet> => {
+  // Criar nova aposta - suporta ambos os modos (com fixture ou manual)
+  createBet: async (
+    bet: (Omit<CreateBetDTO, "user_id"> | Omit<CreateBetLegacyDTO, "user_id">) & { user_id?: string }
+  ): Promise<Bet> => {
     const targetUserId = bet.user_id || DEMO_USER_ID;
-    const payload = {
-      ...bet,
+
+    // Construir payload baseado nos campos disponíveis
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const payload: Record<string, any> = {
       user_id: targetUserId,
       source: bet.source ?? "dashboard",
     };
+
+    // Verificar se é o formato novo (com home_team/away_team) ou legado (com event)
+    if ("home_team" in bet && "away_team" in bet) {
+      payload.home_team = bet.home_team;
+      payload.away_team = bet.away_team;
+
+      if ("fixture_id" in bet && bet.fixture_id) {
+        payload.fixture_id = bet.fixture_id;
+      }
+    } else if ("event" in bet) {
+      // Formato legado - extrair home_team e away_team do event se possível
+      const eventParts = bet.event.split(/\s+(?:vs?|x)\s+/i);
+      if (eventParts.length === 2) {
+        payload.home_team = eventParts[0].trim();
+        payload.away_team = eventParts[1].trim();
+      } else {
+        // Fallback: enviar o event como home_team (backend vai lidar)
+        payload.home_team = bet.event;
+        payload.away_team = "";
+      }
+    }
+
+    // Campos comuns
+    payload.market = bet.market;
+    payload.odd = bet.odd;
+    payload.stake = bet.stake;
+
+    if ("is_live" in bet) {
+      payload.is_live = bet.is_live;
+    }
 
     return requestWithFallback<Bet>([
       () => api.post(`/bets/`, payload).then((response) => parseSingleBet(response.data)),
