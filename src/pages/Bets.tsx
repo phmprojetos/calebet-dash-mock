@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Calendar, TrendingUp, Target, DollarSign } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, TrendingUp, Target, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
 import { Bet } from "@/lib/mockData";
 import { useBets } from "@/hooks/useBets";
 import { toast } from "@/components/ui/sonner";
@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DateRangeFilter, type DateRangePeriod } from "@/components/DateRangeFilter";
-import { filterBetsByDateRange, getDateRange } from "@/lib/utils";
+import { getDateRange } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -58,9 +58,48 @@ export default function Bets() {
   const lastSyncedSearch = useRef<string | null>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const { bets, isLoading, createBetAsync, updateBet, deleteBet, isDeleting, isCreating } =
-    useBets();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
 
+  // Mapear período para filtro da API
+  const getApiFilter = (period: DateRangePeriod): "today" | "this_week" | "this_month" | undefined => {
+    switch (period) {
+      case "today":
+        return "today";
+      case "7days":
+        return "this_week";
+      case "30days":
+        return "this_month";
+      default:
+        return undefined;
+    }
+  };
+
+  // Formatar data para YYYY-MM-DD
+  const formatDateForApi = (date: Date): string => {
+    return date.toISOString().split("T")[0];
+  };
+
+  const {
+    bets,
+    total,
+    page,
+    totalPages,
+    isLoading,
+    createBetAsync,
+    updateBet,
+    deleteBet,
+    isDeleting,
+    isCreating,
+  } = useBets({
+    filter: selectedPeriod !== "custom" && selectedPeriod !== "all" ? getApiFilter(selectedPeriod) : undefined,
+    start_date: selectedPeriod === "custom" || selectedPeriod === "all" ? formatDateForApi(startDate) : undefined,
+    end_date: selectedPeriod === "custom" || selectedPeriod === "all" ? formatDateForApi(endDate) : undefined,
+    page: currentPage,
+    limit: itemsPerPage,
+  });
+
+  // Os dados já vêm ordenados e paginados da API
   const sortedBets = useMemo(
     () =>
       [...bets].sort(
@@ -68,11 +107,6 @@ export default function Bets() {
           new Date(second.created_at).getTime() - new Date(first.created_at).getTime(),
       ),
     [bets],
-  );
-
-  const last30DaysBets = useMemo(
-    () => filterBetsByDateRange(sortedBets, initialRange.start, initialRange.end),
-    [initialRange.end, initialRange.start, sortedBets],
   );
 
   const markets = useMemo(() => {
@@ -89,21 +123,26 @@ export default function Bets() {
     return Array.from(uniqueMarkets).sort((a, b) => a.localeCompare(b));
   }, [marketFilter, sortedBets]);
 
+  // Filtragem adicional no frontend para resultado e mercado (não suportados pela API)
   const filteredBets = useMemo(() => {
     return sortedBets.filter((bet) => {
-      const createdAt = new Date(bet.created_at);
-      const isWithinRange = createdAt >= startDate && createdAt <= endDate;
       const matchesResult = resultFilter === "all" || bet.result === resultFilter;
       const matchesMarket = marketFilter === "all" || bet.market === marketFilter;
 
-      return isWithinRange && matchesResult && matchesMarket;
+      return matchesResult && matchesMarket;
     });
-  }, [endDate, marketFilter, resultFilter, sortedBets, startDate]);
+  }, [marketFilter, resultFilter, sortedBets]);
 
   const handleDateRangeChange = (start: Date, end: Date) => {
     setStartDate(new Date(start));
     setEndDate(new Date(end));
+    setCurrentPage(1); // Reset para primeira página ao mudar filtro
   };
+
+  // Reset página quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPeriod, resultFilter, marketFilter]);
 
   const searchParamsString = searchParams.toString();
 
@@ -315,7 +354,7 @@ export default function Bets() {
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Minhas Apostas</h1>
           <p className="text-sm md:text-base text-muted-foreground">Gerencie todas as suas apostas</p>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Exibindo {last30DaysBets.length} apostas registradas nos últimos 30 dias por padrão.
+            Exibindo {filteredBets.length} de {total} apostas • Página {page} de {totalPages}
           </p>
         </div>
         <Button onClick={() => setDialogOpen(true)} className="w-full md:w-auto">
@@ -439,11 +478,11 @@ export default function Bets() {
                       <span className="text-xs text-muted-foreground">Lucro</span>
                       <span
                         className={`text-sm font-semibold ${
-                          bet.profit >= 0 ? "text-success" : "text-destructive"
+                          (bet.profit ?? 0) >= 0 ? "text-success" : "text-destructive"
                         }`}
                       >
-                        {bet.profit >= 0 ? "+" : ""}
-                        {bet.profit.toLocaleString("pt-BR")}
+                        {(bet.profit ?? 0) >= 0 ? "+" : ""}
+                        {(bet.profit ?? 0).toLocaleString("pt-BR")}
                       </span>
                     </div>
                     <div className="flex flex-col items-center p-2 bg-muted/50 rounded-md">
@@ -537,10 +576,10 @@ export default function Bets() {
                     <TableCell>
                       <span
                         className={
-                          bet.profit >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"
+                          (bet.profit ?? 0) >= 0 ? "text-success font-semibold" : "text-destructive font-semibold"
                         }
                       >
-                        R$ {bet.profit.toLocaleString("pt-BR")}
+                        R$ {(bet.profit ?? 0).toLocaleString("pt-BR")}
                       </span>
                     </TableCell>
                     <TableCell>{new Date(bet.created_at).toLocaleDateString("pt-BR")}</TableCell>
@@ -562,6 +601,61 @@ export default function Bets() {
               )}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {/* Paginação */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {(page - 1) * itemsPerPage + 1} a {Math.min(page * itemsPerPage, total)} de {total} apostas
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={page <= 1 || isLoading}
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Anterior
+            </Button>
+            <div className="flex items-center gap-1">
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum: number;
+                if (totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (page <= 3) {
+                  pageNum = i + 1;
+                } else if (page >= totalPages - 2) {
+                  pageNum = totalPages - 4 + i;
+                } else {
+                  pageNum = page - 2 + i;
+                }
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={page === pageNum ? "default" : "outline"}
+                    size="sm"
+                    className="w-9"
+                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={isLoading}
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={page >= totalPages || isLoading}
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
 

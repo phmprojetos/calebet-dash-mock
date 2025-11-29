@@ -20,7 +20,7 @@ export function filterBetsByDateRange(bets: Bet[], startDate: Date, endDate: Dat
 export function calculateStats(bets: Bet[]): Stats {
   const total_bets = bets.length;
   const total_stake = bets.reduce((sum, bet) => sum + bet.stake, 0);
-  const total_profit = bets.reduce((sum, bet) => sum + bet.profit, 0);
+  const total_profit = bets.reduce((sum, bet) => sum + (bet.profit ?? 0), 0);
   const avg_odd = total_bets > 0 ? bets.reduce((sum, bet) => sum + bet.odd, 0) / total_bets : 0;
   
   const by_result = {
@@ -52,15 +52,16 @@ export function calculateStats(bets: Bet[]): Stats {
     }
     
     const market = by_market[bet.market];
+    const profit = bet.profit ?? 0;
     market.total_bets++;
     market.total_stake += bet.stake;
-    market.total_profit += bet.profit;
+    market.total_profit += profit;
     
     if (bet.result === "win") market.wins++;
     if (bet.result === "loss") market.losses++;
     if (bet.result === "cashout") {
       market.cashouts++;
-      if (bet.profit > 0) market.cashouts_positive++;
+      if (profit > 0) market.cashouts_positive++;
     }
   });
   
@@ -93,10 +94,10 @@ export function calculateStats(bets: Bet[]): Stats {
     }
   });
   
-  const positive_cashouts = bets.filter(b => b.result === "cashout" && b.profit > 0).length;
+  const positive_cashouts = bets.filter(b => b.result === "cashout" && (b.profit ?? 0) > 0).length;
   const positive_cashouts_profit = bets
-    .filter(b => b.result === "cashout" && b.profit > 0)
-    .reduce((sum, bet) => sum + bet.profit, 0);
+    .filter(b => b.result === "cashout" && (b.profit ?? 0) > 0)
+    .reduce((sum, bet) => sum + (bet.profit ?? 0), 0);
   
   return {
     total_bets,

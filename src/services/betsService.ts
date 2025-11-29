@@ -1,5 +1,5 @@
 import { api, DEMO_USER_ID, requestWithFallback, unwrapApiResponse } from "@/lib/api";
-import { Bet } from "@/lib/mockData";
+import { Bet, PaginatedBetsResponse, GetBetsParams } from "@/lib/mockData";
 
 type RawBet = Record<string, unknown>;
 
@@ -23,10 +23,11 @@ const ensureRecord = (value: unknown): RawBet => {
 const normalizeResult = (value: unknown): Bet["result"] => {
   if (typeof value === "string") {
     const normalized = value.toLowerCase();
+    // Mapeamento direto para resultados conhecidos
     if (["win", "loss", "pending", "void", "cashout"].includes(normalized)) {
       return normalized as Bet["result"];
     }
-
+    // Mapeamento da nova API: won -> win, lost -> loss
     if (normalized === "won") return "win";
     if (normalized === "lost" || normalized === "lose") return "loss";
   }
@@ -43,14 +44,25 @@ const normalizeNumber = (value: unknown): number => {
   return 0;
 };
 
+const normalizeNumberOrNull = (value: unknown): number | null => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
 const normalizeBet = (rawBet: unknown): Bet => {
   const bet = ensureRecord(rawBet);
+  // ordem_id é o novo campo primário da API
   const rawId = getValue(bet, [
+    "ordem_id",
     "id",
     "bet_id",
     "betId",
     "order_id",
-    "ordem_id",
     "reference",
     "uuid",
     "external_id",
@@ -64,6 +76,9 @@ const normalizeBet = (rawBet: unknown): Bet => {
     new Date().toISOString();
   const rawUpdatedAt = getValue(bet, ["updated_at", "updatedAt", "modified_at", "modifiedAt"]);
   const rawSource = getValue(bet, ["source", "origin", "provider"]);
+  const rawPayoutValue = getValue(bet, ["payout_value", "payout"]);
+  const rawIsLive = getValue(bet, ["is_live", "isLive", "live"]);
+  const rawImageUrl = getValue(bet, ["image_url", "imageUrl", "image"]);
 
   return {
     id: rawId ? String(rawId) : `bet-${Math.random().toString(36).slice(2)}`,
@@ -72,10 +87,14 @@ const normalizeBet = (rawBet: unknown): Bet => {
     market: typeof rawMarket === "string" ? rawMarket : "",
     odd: normalizeNumber(getValue(bet, ["odd", "odds", "price"])),
     stake: normalizeNumber(getValue(bet, ["stake", "amount", "value"])),
-    result: normalizeResult(getValue(bet, ["result", "status", "outcome"])),
-    profit: normalizeNumber(
-      getValue(bet, ["profit", "net_profit", "payout", "return", "net", "cashout"])
+    payout_value: normalizeNumberOrNull(rawPayoutValue),
+    profit: normalizeNumberOrNull(
+      getValue(bet, ["profit", "net_profit", "return", "net"])
     ),
+    result: normalizeResult(getValue(bet, ["result", "status", "outcome"])),
+    is_live: typeof rawIsLive === "boolean" ? rawIsLive : false,
+    source: typeof rawSource === "string" ? rawSource : undefined,
+    image_url: typeof rawImageUrl === "string" ? rawImageUrl : null,
     created_at: typeof rawCreatedAt === "string" ? rawCreatedAt : new Date().toISOString(),
     updated_at:
       typeof rawUpdatedAt === "string"
@@ -83,7 +102,6 @@ const normalizeBet = (rawBet: unknown): Bet => {
         : rawUpdatedAt === null
           ? null
           : undefined,
-    source: typeof rawSource === "string" ? rawSource : undefined,
   };
 };
 
@@ -106,6 +124,34 @@ const parseBetList = (payload: unknown): Bet[] => {
   }
 
   return [];
+};
+
+const parsePaginatedBets = (payload: unknown): PaginatedBetsResponse => {
+  // A resposta já vem no formato paginado, não precisa unwrap
+  if (payload && typeof payload === "object") {
+    const container = payload as Record<string, unknown>;
+    
+    // Verificar se é resposta paginada
+    if ("items" in container && Array.isArray(container.items)) {
+      return {
+        items: container.items.map((item) => normalizeBet(item ?? {})),
+        total: typeof container.total === "number" ? container.total : 0,
+        page: typeof container.page === "number" ? container.page : 1,
+        limit: typeof container.limit === "number" ? container.limit : 20,
+        total_pages: typeof container.total_pages === "number" ? container.total_pages : 1,
+      };
+    }
+  }
+
+  // Fallback: se receber array direto, converter para formato paginado
+  const items = parseBetList(payload);
+  return {
+    items,
+    total: items.length,
+    page: 1,
+    limit: items.length || 20,
+    total_pages: 1,
+  };
 };
 
 const parseSingleBet = (payload: unknown): Bet => {
@@ -147,19 +193,39 @@ export interface UpdateBetDTO {
 }
 
 export const betsService = {
-  // Listar todas as apostas
-  getBets: async (userId: string = DEMO_USER_ID): Promise<Bet[]> => {
-    const targetUserId = userId || DEMO_USER_ID;
+  // Listar todas as apostas com paginação
+  getBets: async (params: GetBetsParams = {}): Promise<PaginatedBetsResponse> => {
+    const targetUserId = params.user_id || DEMO_USER_ID;
 
-    return requestWithFallback<Bet[]>([
+    const queryParams: Record<string, string | number> = {
+      user_id: targetUserId,
+    };
+
+    if (params.filter) {
+      queryParams.filter = params.filter;
+    }
+    if (params.start_date) {
+      queryParams.start_date = params.start_date;
+    }
+    if (params.end_date) {
+      queryParams.end_date = params.end_date;
+    }
+    if (params.page) {
+      queryParams.page = params.page;
+    }
+    if (params.limit) {
+      queryParams.limit = params.limit;
+    }
+
+    return requestWithFallback<PaginatedBetsResponse>([
       () =>
         api
-          .get(`/bets/`, { params: { user_id: targetUserId } })
-          .then((response) => parseBetList(response.data)),
+          .get(`/bets/`, { params: queryParams })
+          .then((response) => parsePaginatedBets(response.data)),
       () =>
         api
-          .get(`/users/${targetUserId}/bets`)
-          .then((response) => parseBetList(response.data)),
+          .get(`/users/${targetUserId}/bets`, { params: queryParams })
+          .then((response) => parsePaginatedBets(response.data)),
     ]);
   },
 

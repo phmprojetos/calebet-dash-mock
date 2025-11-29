@@ -3,7 +3,7 @@ import { isAxiosError } from "axios";
 import { betsService, CreateBetDTO, UpdateBetDTO } from "@/services/betsService";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Bet } from "@/lib/mockData";
+import { Bet, GetBetsParams } from "@/lib/mockData";
 
 const getErrorMessage = (error: unknown): string => {
   if (isAxiosError(error)) {
@@ -20,16 +20,34 @@ const getErrorMessage = (error: unknown): string => {
   return "Tente novamente.";
 };
 
-export const useBets = () => {
+export interface UseBetsOptions {
+  filter?: GetBetsParams["filter"];
+  start_date?: string;
+  end_date?: string;
+  page?: number;
+  limit?: number;
+}
+
+export const useBets = (options: UseBetsOptions = {}) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const userId = user?.id || "";
 
-  // Query para listar apostas
+  const { filter, start_date, end_date, page = 1, limit = 20 } = options;
+
+  // Query para listar apostas com paginação
   const betsQuery = useQuery({
-    queryKey: ["bets", userId],
-    queryFn: () => betsService.getBets(userId),
+    queryKey: ["bets", userId, { filter, start_date, end_date, page, limit }],
+    queryFn: () =>
+      betsService.getBets({
+        user_id: userId,
+        filter,
+        start_date,
+        end_date,
+        page,
+        limit,
+      }),
   });
 
   // Mutation para criar aposta
@@ -37,8 +55,8 @@ export const useBets = () => {
     mutationFn: (bet: Omit<CreateBetDTO, "user_id">) =>
       betsService.createBet({ ...bet, user_id: userId || undefined }),
     onSuccess: (newBet) => {
-      queryClient.setQueryData<Bet[]>(["bets", userId], (previous = []) => [newBet, ...previous]);
-      queryClient.invalidateQueries({ queryKey: ["bets", userId] });
+      // Invalidar todas as queries de bets para recarregar com os novos dados
+      queryClient.invalidateQueries({ queryKey: ["bets"] });
       queryClient.invalidateQueries({ queryKey: ["stats"] });
       toast({
         title: "Aposta criada",
@@ -98,8 +116,14 @@ export const useBets = () => {
     },
   });
 
+  const paginatedData = betsQuery.data;
+
   return {
-    bets: betsQuery.data || [],
+    bets: paginatedData?.items || [],
+    total: paginatedData?.total || 0,
+    page: paginatedData?.page || 1,
+    limit: paginatedData?.limit || 20,
+    totalPages: paginatedData?.total_pages || 1,
     isLoading: betsQuery.isLoading,
     isError: betsQuery.isError,
     error: betsQuery.error,
