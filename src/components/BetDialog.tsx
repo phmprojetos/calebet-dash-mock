@@ -22,10 +22,11 @@ interface BetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bet?: Bet;
+  initialEvent?: string | null;
   onSave: (bet: Bet) => void;
 }
 
-export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
+export function BetDialog({ open, onOpenChange, bet, initialEvent, onSave }: BetDialogProps) {
   const [formData, setFormData] = useState<Bet>({
     id: "",
     event: "",
@@ -45,7 +46,7 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
     } else {
       setFormData({
         id: `BET-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-        event: "",
+        event: initialEvent || "",
         market: "",
         odd: 0,
         stake: 0,
@@ -55,7 +56,7 @@ export function BetDialog({ open, onOpenChange, bet, onSave }: BetDialogProps) {
         source: "dashboard",
       });
     }
-  }, [bet, open]);
+  }, [bet, open, initialEvent]);
 
   useEffect(() => {
     setFormData((prev) => {

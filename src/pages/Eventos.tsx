@@ -1,64 +1,38 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Clock, ChevronRight, Trophy, Zap, Search, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Evento {
   id: string;
-  date: string; // yyyy-mm-dd
+  date: string;
   league: string;
+  leagueCountry: string;
   homeTeam: string;
   awayTeam: string;
-  time: string; // HH:mm
+  homeShort: string;
+  awayShort: string;
+  time: string;
   homeOdd: number;
   drawOdd: number;
   awayOdd: number;
+  isLive?: boolean;
 }
 
-const eventosMock: Evento[] = [
-  {
-    id: "1",
-    date: formatDateKey(new Date()),
-    league: "Premier League",
-    homeTeam: "Manchester City",
-    awayTeam: "Liverpool",
-    time: "19:30",
-    homeOdd: 1.85,
-    drawOdd: 3.4,
-    awayOdd: 4.1,
-  },
-  {
-    id: "2",
-    date: formatDateKey(new Date()),
-    league: "La Liga",
-    homeTeam: "Barcelona",
-    awayTeam: "Real Sociedad",
-    time: "21:00",
-    homeOdd: 1.72,
-    drawOdd: 3.6,
-    awayOdd: 4.5,
-  },
-  {
-    id: "3",
-    date: formatDateKey(addDays(new Date(), 1)),
-    league: "Serie A",
-    homeTeam: "Juventus",
-    awayTeam: "Napoli",
-    time: "17:00",
-    homeOdd: 2.05,
-    drawOdd: 3.1,
-    awayOdd: 3.65,
-  },
-  {
-    id: "4",
-    date: formatDateKey(addDays(new Date(), 2)),
-    league: "Bundesliga",
-    homeTeam: "Bayern München",
-    awayTeam: "RB Leipzig",
-    time: "16:30",
-    homeOdd: 1.95,
-    drawOdd: 3.3,
-    awayOdd: 3.9,
-  },
-];
-
+// Utility functions
 function formatDateKey(date: Date) {
   return date.toISOString().split("T")[0];
 }
@@ -69,138 +43,587 @@ function addDays(date: Date, days: number) {
   return result;
 }
 
-function getWeekdayLabel(date: Date) {
-  const formatter = new Intl.DateTimeFormat("pt-BR", { weekday: "short" });
-  return formatter.format(date).replace(".", "").toUpperCase();
+function getWeekdayShort(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", { weekday: "short" })
+    .format(date)
+    .replace(".", "")
+    .toUpperCase()
+    .slice(0, 3);
 }
 
 function getDayOfMonth(date: Date) {
-  return new Intl.DateTimeFormat("pt-BR", { day: "2-digit" }).format(date);
+  return date.getDate();
 }
 
-function getEventosByDate(date: string) {
-  return eventosMock.filter((evento) => evento.date === date);
+function getMonthShort(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", { month: "short" })
+    .format(date)
+    .replace(".", "")
+    .toUpperCase();
 }
+
+// Mock data
+const eventosMock: Evento[] = [
+  {
+    id: "live-1",
+    date: formatDateKey(new Date()),
+    league: "Premier League",
+    leagueCountry: "Inglaterra",
+    homeTeam: "Arsenal",
+    awayTeam: "Chelsea",
+    homeShort: "ARS",
+    awayShort: "CHE",
+    time: "AO VIVO",
+    homeOdd: 1.65,
+    drawOdd: 3.8,
+    awayOdd: 5.2,
+    isLive: true,
+  },
+  {
+    id: "1",
+    date: formatDateKey(new Date()),
+    league: "Premier League",
+    leagueCountry: "Inglaterra",
+    homeTeam: "Manchester City",
+    awayTeam: "Liverpool",
+    homeShort: "MCI",
+    awayShort: "LIV",
+    time: "16:30",
+    homeOdd: 1.85,
+    drawOdd: 3.4,
+    awayOdd: 4.1,
+  },
+  {
+    id: "2",
+    date: formatDateKey(new Date()),
+    league: "La Liga",
+    leagueCountry: "Espanha",
+    homeTeam: "Barcelona",
+    awayTeam: "Real Sociedad",
+    homeShort: "BAR",
+    awayShort: "RSO",
+    time: "19:00",
+    homeOdd: 1.72,
+    drawOdd: 3.6,
+    awayOdd: 4.5,
+  },
+  {
+    id: "3",
+    date: formatDateKey(new Date()),
+    league: "Brasileirão",
+    leagueCountry: "Brasil",
+    homeTeam: "Flamengo",
+    awayTeam: "Palmeiras",
+    homeShort: "FLA",
+    awayShort: "PAL",
+    time: "21:00",
+    homeOdd: 2.1,
+    drawOdd: 3.2,
+    awayOdd: 3.5,
+  },
+  {
+    id: "4",
+    date: formatDateKey(addDays(new Date(), 1)),
+    league: "Serie A",
+    leagueCountry: "Itália",
+    homeTeam: "Juventus",
+    awayTeam: "Napoli",
+    homeShort: "JUV",
+    awayShort: "NAP",
+    time: "14:00",
+    homeOdd: 2.05,
+    drawOdd: 3.1,
+    awayOdd: 3.65,
+  },
+  {
+    id: "5",
+    date: formatDateKey(addDays(new Date(), 1)),
+    league: "Bundesliga",
+    leagueCountry: "Alemanha",
+    homeTeam: "Bayern München",
+    awayTeam: "Dortmund",
+    homeShort: "BAY",
+    awayShort: "DOR",
+    time: "16:30",
+    homeOdd: 1.55,
+    drawOdd: 4.0,
+    awayOdd: 5.5,
+  },
+  {
+    id: "6",
+    date: formatDateKey(addDays(new Date(), 2)),
+    league: "Ligue 1",
+    leagueCountry: "França",
+    homeTeam: "PSG",
+    awayTeam: "Marseille",
+    homeShort: "PSG",
+    awayShort: "MAR",
+    time: "17:00",
+    homeOdd: 1.4,
+    drawOdd: 4.5,
+    awayOdd: 7.0,
+  },
+  {
+    id: "7",
+    date: formatDateKey(addDays(new Date(), 3)),
+    league: "Champions League",
+    leagueCountry: "Europa",
+    homeTeam: "Real Madrid",
+    awayTeam: "Man City",
+    homeShort: "RMA",
+    awayShort: "MCI",
+    time: "16:00",
+    homeOdd: 2.3,
+    drawOdd: 3.4,
+    awayOdd: 2.9,
+  },
+];
 
 export default function Eventos() {
   const todayKey = formatDateKey(new Date());
   const [selectedDate, setSelectedDate] = useState<string>(todayKey);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedCompetition, setSelectedCompetition] = useState<string>("all");
+  const isMobile = useIsMobile();
+  const navigate = useNavigate();
 
   const dias = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, index) => {
+    return Array.from({ length: 14 }).map((_, index) => {
       const currentDate = addDays(new Date(), index);
       return {
         key: formatDateKey(currentDate),
-        weekday: getWeekdayLabel(currentDate),
+        weekday: getWeekdayShort(currentDate),
         day: getDayOfMonth(currentDate),
+        month: getMonthShort(currentDate),
         isToday: index === 0,
+        isTomorrow: index === 1,
       };
     });
   }, []);
 
+  // Extrair lista única de competições
+  const competicoes = useMemo(() => {
+    const unique = new Set<string>();
+    eventosMock.forEach((evento) => {
+      const key = `${evento.leagueCountry} - ${evento.league}`;
+      unique.add(key);
+    });
+    return Array.from(unique).sort();
+  }, []);
+
   const eventosFiltrados = useMemo(() => {
-    return getEventosByDate(selectedDate).sort((a, b) => a.time.localeCompare(b.time));
-  }, [selectedDate]);
+    let filtered = eventosMock.filter((evento) => evento.date === selectedDate);
+
+    // Filtro por competição
+    if (selectedCompetition !== "all") {
+      filtered = filtered.filter((evento) => {
+        const key = `${evento.leagueCountry} - ${evento.league}`;
+        return key === selectedCompetition;
+      });
+    }
+
+    // Filtro por pesquisa (busca em times, liga, país)
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((evento) => {
+        const homeTeam = evento.homeTeam.toLowerCase();
+        const awayTeam = evento.awayTeam.toLowerCase();
+        const league = evento.league.toLowerCase();
+        const leagueCountry = evento.leagueCountry.toLowerCase();
+        const fullEvent = `${evento.homeTeam} x ${evento.awayTeam}`.toLowerCase();
+
+        return (
+          homeTeam.includes(query) ||
+          awayTeam.includes(query) ||
+          league.includes(query) ||
+          leagueCountry.includes(query) ||
+          fullEvent.includes(query)
+        );
+      });
+    }
+
+    return filtered.sort((a, b) => {
+      // Live games first
+      if (a.isLive && !b.isLive) return -1;
+      if (!a.isLive && b.isLive) return 1;
+      return a.time.localeCompare(b.time);
+    });
+  }, [selectedDate, selectedCompetition, searchQuery]);
+
+  // Group events by league
+  const eventosPorLiga = useMemo(() => {
+    const grouped: Record<string, Evento[]> = {};
+    eventosFiltrados.forEach((evento) => {
+      const key = `${evento.leagueCountry} - ${evento.league}`;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(evento);
+    });
+    return grouped;
+  }, [eventosFiltrados]);
 
   const handleRegistrarAposta = (evento: Evento) => {
-    // Futuramente este botão poderá abrir um modal ou disparar uma ação de API
-    console.log("Registrar aposta para", evento);
+    const eventName = `${evento.homeTeam} x ${evento.awayTeam}`;
+    navigate(`/bets?event=${encodeURIComponent(eventName)}`);
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 md:px-8">
-        <header className="flex flex-col gap-3">
-          <div>
-            <p className="text-sm font-medium text-emerald-500">Calebet</p>
-            <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">Eventos</h1>
-          </div>
-          <div className="text-base text-slate-400">
-            <p className="font-medium text-slate-200">Encontre os principais jogos de futebol para apostar</p>
-            <p className="text-slate-400">Escolha uma data e veja os jogos disponíveis.</p>
-          </div>
-        </header>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-foreground">
+            Eventos
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Jogos de futebol disponíveis para apostar
+          </p>
+        </div>
+        <Badge variant="outline" className="gap-1.5">
+          <Zap className="h-3 w-3 text-primary" />
+          {eventosFiltrados.filter((e) => e.isLive).length} ao vivo
+          {eventosFiltrados.length > 0 && (
+            <span className="text-muted-foreground">
+              {" "}• {eventosFiltrados.length} {eventosFiltrados.length === 1 ? "jogo" : "jogos"}
+            </span>
+          )}
+        </Badge>
+      </div>
 
-        <section className="flex items-center gap-3 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/60 p-3 shadow-sm">
-          {dias.map((dia) => {
-            const isSelected = selectedDate === dia.key;
-
-            return (
+      {/* Search and Filters */}
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar por time, liga ou país..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-9"
+            />
+            {searchQuery && (
               <button
-                key={dia.key}
-                onClick={() => setSelectedDate(dia.key)}
-                className={`flex min-w-[90px] flex-col items-center justify-center gap-1 rounded-xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                  isSelected
-                    ? "bg-emerald-600 text-white shadow-md"
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-800/70"
-                }`}
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
               >
-                <span className="text-xs uppercase tracking-wide opacity-90">{dia.weekday}</span>
-                <span className="text-lg font-bold leading-none">{dia.day}</span>
-                {dia.isToday ? (
-                  <span className="text-[10px] font-medium text-emerald-100">Hoje</span>
-                ) : null}
+                <X className="h-4 w-4" />
               </button>
-            );
-          })}
-        </section>
+            )}
+          </div>
 
-        <section className="flex flex-col gap-4">
-          {eventosFiltrados.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900 px-6 py-10 text-center shadow-sm">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-800 text-2xl">⚽️</div>
-              <div className="space-y-1">
-                <h3 className="text-xl font-semibold text-slate-100">Nenhum jogo encontrado para esta data</h3>
-                <p className="text-sm text-slate-400">Escolha outro dia no calendário ou volte mais tarde.</p>
+          {/* Competition Filter */}
+          <Select value={selectedCompetition} onValueChange={setSelectedCompetition}>
+            <SelectTrigger className="w-full sm:w-[240px]">
+              <SelectValue placeholder="Todas as competições" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as competições</SelectItem>
+              {competicoes.map((comp) => (
+                <SelectItem key={comp} value={comp}>
+                  {comp}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Active Filters Indicator */}
+        {(searchQuery || selectedCompetition !== "all") && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-muted-foreground">Filtros ativos:</span>
+            {searchQuery && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                Pesquisa: "{searchQuery}"
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {selectedCompetition !== "all" && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                {selectedCompetition}
+                <button
+                  onClick={() => setSelectedCompetition("all")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs px-2"
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedCompetition("all");
+              }}
+            >
+              Limpar filtros
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Calendar Strip - Compact SofaScore style */}
+      <Card className="p-2 bg-card">
+        <ScrollArea className="w-full">
+          <div className="flex gap-1">
+            {dias.map((dia) => {
+              const isSelected = selectedDate === dia.key;
+              const hasEvents = eventosMock.some((e) => e.date === dia.key);
+
+              return (
+                <button
+                  key={dia.key}
+                  onClick={() => setSelectedDate(dia.key)}
+                  className={cn(
+                    "flex flex-col items-center justify-center rounded-lg transition-all min-w-[48px] py-2 px-2",
+                    isSelected
+                      ? "bg-primary text-primary-foreground"
+                      : hasEvents
+                        ? "bg-secondary hover:bg-secondary/80 text-foreground"
+                        : "text-muted-foreground hover:bg-secondary/50"
+                  )}
+                >
+                  <span className="text-[10px] font-medium opacity-80">
+                    {dia.isToday ? "HOJE" : dia.isTomorrow ? "AMANHÃ" : dia.weekday}
+                  </span>
+                  <span className="text-lg font-bold leading-tight">{dia.day}</span>
+                  <span className="text-[9px] opacity-60">{dia.month}</span>
+                  {hasEvents && !isSelected && (
+                    <div className="w-1 h-1 rounded-full bg-primary mt-0.5" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </Card>
+
+      {/* Events List */}
+      <div className="space-y-4">
+        {Object.keys(eventosPorLiga).length === 0 ? (
+          <Card className="p-8 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+                <Trophy className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">
+                  {searchQuery || selectedCompetition !== "all"
+                    ? "Nenhum jogo encontrado"
+                    : "Nenhum jogo nesta data"}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {searchQuery || selectedCompetition !== "all" ? (
+                    <>
+                      Tente ajustar os filtros ou{" "}
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSelectedCompetition("all");
+                        }}
+                        className="text-primary hover:underline"
+                      >
+                        limpar os filtros
+                      </button>
+                    </>
+                  ) : (
+                    "Selecione outra data no calendário"
+                  )}
+                </p>
               </div>
             </div>
-          ) : (
-            eventosFiltrados.map((evento) => (
-              <article
-                key={evento.id}
-                className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm transition hover:border-slate-700"
-              >
-                <div className="flex items-center justify-between text-sm text-slate-400">
-                  <span className="font-semibold text-slate-200">{evento.league}</span>
-                  <span className="rounded-full bg-slate-800 px-3 py-1 text-xs font-medium text-slate-200">
-                    {evento.time}
-                  </span>
+          </Card>
+        ) : (
+          Object.entries(eventosPorLiga).map(([liga, eventos]) => (
+            <Card key={liga} className="overflow-hidden">
+              {/* League Header */}
+              <div className="flex items-center gap-2 px-3 py-2 bg-secondary/50 border-b border-border">
+                <div className="w-5 h-5 rounded bg-background flex items-center justify-center text-xs">
+                  ⚽
                 </div>
+                <span className="text-xs font-medium text-foreground">
+                  {liga}
+                </span>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {eventos.length} {eventos.length === 1 ? "jogo" : "jogos"}
+                </span>
+              </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-2xl font-bold sm:text-3xl">
-                    <span>{evento.homeTeam}</span>
-                    <span className="mx-2 text-emerald-400"> x </span>
-                    <span>{evento.awayTeam}</span>
-                  </div>
-
-                  <button
-                    onClick={() => handleRegistrarAposta(evento)}
-                    className="mt-2 inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 sm:mt-0"
+              {/* Events */}
+              <div className="divide-y divide-border">
+                {eventos.map((evento) => (
+                  <div
+                    key={evento.id}
+                    className={cn(
+                      "p-3 transition-colors hover:bg-secondary/30",
+                      evento.isLive && "bg-primary/5"
+                    )}
                   >
-                    Registrar Aposta
-                  </button>
-                </div>
+                    {/* Mobile Layout */}
+                    {isMobile ? (
+                      <div className="space-y-3">
+                        {/* Time / Live Badge */}
+                        <div className="flex items-center justify-between">
+                          {evento.isLive ? (
+                            <Badge variant="destructive" className="gap-1 text-xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              LIVE
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span className="text-xs font-medium">{evento.time}</span>
+                            </div>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-primary"
+                            onClick={() => handleRegistrarAposta(evento)}
+                          >
+                            Apostar
+                            <ChevronRight className="h-3 w-3 ml-1" />
+                          </Button>
+                        </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                  {[{ label: "1", value: evento.homeOdd }, { label: "X", value: evento.drawOdd }, { label: "2", value: evento.awayOdd }].map(
-                    (odd) => (
-                      <div
-                        key={odd.label}
-                        className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-100"
-                      >
-                        <span className="text-slate-400">{odd.label}</span>
-                        <span className="text-lg">{odd.value.toFixed(2)}</span>
+                        {/* Teams */}
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex-1 space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                                {evento.homeShort.slice(0, 2)}
+                              </div>
+                              <span className="text-sm font-medium text-foreground truncate">
+                                {evento.homeTeam}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-[10px] font-bold">
+                                {evento.awayShort.slice(0, 2)}
+                              </div>
+                              <span className="text-sm font-medium text-foreground truncate">
+                                {evento.awayTeam}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Odds */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: "1", value: evento.homeOdd },
+                            { label: "X", value: evento.drawOdd },
+                            { label: "2", value: evento.awayOdd },
+                          ].map((odd) => (
+                            <button
+                              key={odd.label}
+                              className="flex flex-col items-center justify-center py-2 rounded-lg bg-secondary/80 hover:bg-primary/20 transition-colors border border-transparent hover:border-primary/30"
+                            >
+                              <span className="text-[10px] text-muted-foreground">
+                                {odd.label}
+                              </span>
+                              <span className="text-sm font-bold text-foreground">
+                                {odd.value.toFixed(2)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    ),
-                  )}
-                </div>
-              </article>
-            ))
-          )}
-        </section>
+                    ) : (
+                      /* Desktop Layout */
+                      <div className="flex items-center gap-4">
+                        {/* Time */}
+                        <div className="w-16 flex-shrink-0">
+                          {evento.isLive ? (
+                            <Badge variant="destructive" className="gap-1 text-xs animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              LIVE
+                            </Badge>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span className="text-sm font-medium">{evento.time}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Teams */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-6">
+                            {/* Home Team */}
+                            <div className="flex items-center gap-2 flex-1 justify-end">
+                              <span className="text-sm font-medium text-foreground truncate">
+                                {evento.homeTeam}
+                              </span>
+                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                {evento.homeShort.slice(0, 2)}
+                              </div>
+                            </div>
+
+                            {/* VS */}
+                            <span className="text-xs text-muted-foreground px-2">vs</span>
+
+                            {/* Away Team */}
+                            <div className="flex items-center gap-2 flex-1">
+                              <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                {evento.awayShort.slice(0, 2)}
+                              </div>
+                              <span className="text-sm font-medium text-foreground truncate">
+                                {evento.awayTeam}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Odds */}
+                        <div className="flex items-center gap-2">
+                          {[
+                            { label: "1", value: evento.homeOdd },
+                            { label: "X", value: evento.drawOdd },
+                            { label: "2", value: evento.awayOdd },
+                          ].map((odd) => (
+                            <button
+                              key={odd.label}
+                              className="flex flex-col items-center justify-center w-14 py-1.5 rounded-lg bg-secondary/80 hover:bg-primary/20 transition-colors border border-transparent hover:border-primary/30"
+                            >
+                              <span className="text-[10px] text-muted-foreground">
+                                {odd.label}
+                              </span>
+                              <span className="text-sm font-bold text-foreground">
+                                {odd.value.toFixed(2)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Action */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() => handleRegistrarAposta(evento)}
+                        >
+                          Registrar
+                          <ChevronRight className="h-3 w-3 ml-1" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );
 }
-
