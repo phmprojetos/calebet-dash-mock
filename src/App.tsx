@@ -16,6 +16,7 @@ import Insights from "./pages/Insights";
 import Settings from "./pages/Settings";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import SidebarDemo from "./pages/SidebarDemo";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
+            <Route path="/demo-sidebar" element={<SidebarDemo />} />
             <Route
               path="/*"
               element={
