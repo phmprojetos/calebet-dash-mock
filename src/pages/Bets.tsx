@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Pencil, Trash2, Calendar, TrendingUp, Target, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Calendar, TrendingUp, Target, DollarSign, ChevronLeft, ChevronRight, Filter, ChevronDown } from "lucide-react";
 import { Bet } from "@/lib/mockData";
 import { useBets } from "@/hooks/useBets";
 import { toast } from "@/components/ui/sonner";
@@ -61,6 +61,7 @@ export default function Bets() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(7);
   const [initialEvent, setInitialEvent] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Formatar data para YYYY-MM-DD
   const formatDateForApi = (date: Date): string => {
@@ -368,6 +369,9 @@ export default function Bets() {
     }
   };
 
+  // Verificar se há filtros ativos
+  const hasActiveFilters = resultFilter !== "all" || marketFilter !== "all";
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -390,53 +394,92 @@ export default function Bets() {
           selectedPeriod={selectedPeriod}
           onPeriodChange={setSelectedPeriod}
           customRange={selectedPeriod === "custom" ? { startDate, endDate } : undefined}
+          extraActions={
+            <Button
+              variant={hasActiveFilters ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-1.5 h-9"
+            >
+              <Filter className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[10px] ml-1">
+                  {(resultFilter !== "all" ? 1 : 0) + (marketFilter !== "all" ? 1 : 0)}
+                </Badge>
+              )}
+              <ChevronDown className={`h-3 w-3 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+            </Button>
+          }
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="result-filter" className="text-xs sm:text-sm font-medium">
-              Resultado
-            </Label>
-            <Select
-              value={resultFilter}
-              onValueChange={(value) => setResultFilter(value as Bet["result"] | "all")}
-            >
-              <SelectTrigger id="result-filter" className="w-full">
-                <SelectValue placeholder="Todos os resultados" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="win">Vitória</SelectItem>
-                <SelectItem value="loss">Derrota</SelectItem>
-                <SelectItem value="pending">Pendente</SelectItem>
-                <SelectItem value="void">Void</SelectItem>
-                <SelectItem value="cashout">Cashout</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Filtros de resultado e mercado */}
+        {showFilters && (
+          <Card className="p-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="result-filter" className="text-xs font-medium">
+                  Resultado
+                </Label>
+                <Select
+                  value={resultFilter}
+                  onValueChange={(value) => setResultFilter(value as Bet["result"] | "all")}
+                >
+                  <SelectTrigger id="result-filter" className="w-full h-9">
+                    <SelectValue placeholder="Todos os resultados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="win">Vitória</SelectItem>
+                    <SelectItem value="loss">Derrota</SelectItem>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="void">Void</SelectItem>
+                    <SelectItem value="cashout">Cashout</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="market-filter" className="text-xs sm:text-sm font-medium">
-              Mercado
-            </Label>
-            <Select
-              value={marketFilter}
-              onValueChange={(value) => setMarketFilter(value.trim() ? value : "all")}
-            >
-              <SelectTrigger id="market-filter" className="w-full">
-                <SelectValue placeholder="Todos os mercados" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {markets.map((market) => (
-                  <SelectItem key={market} value={market}>
-                    {market}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="market-filter" className="text-xs font-medium">
+                  Mercado
+                </Label>
+                <Select
+                  value={marketFilter}
+                  onValueChange={(value) => setMarketFilter(value.trim() ? value : "all")}
+                >
+                  <SelectTrigger id="market-filter" className="w-full h-9">
+                    <SelectValue placeholder="Todos os mercados" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {markets.map((market) => (
+                      <SelectItem key={market} value={market}>
+                        {market}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Limpar filtros */}
+              {hasActiveFilters && (
+                <div className="sm:col-span-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs h-7"
+                    onClick={() => {
+                      setResultFilter("all");
+                      setMarketFilter("all");
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Mobile Card View */}

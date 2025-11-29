@@ -21,6 +21,7 @@ interface DateRangeFilterProps {
   selectedPeriod?: DateRangePeriod;
   onPeriodChange?: (period: DateRangePeriod) => void;
   customRange?: { startDate: Date; endDate: Date };
+  extraActions?: React.ReactNode;
 }
 
 export function DateRangeFilter({
@@ -28,6 +29,7 @@ export function DateRangeFilter({
   selectedPeriod,
   onPeriodChange,
   customRange,
+  extraActions,
 }: DateRangeFilterProps) {
   const [internalSelectedPeriod, setInternalSelectedPeriod] = useState<DateRangePeriod>(selectedPeriod ?? "all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
@@ -162,45 +164,49 @@ export function DateRangeFilter({
         </Button>
       </div>
 
-      {/* Custom date range picker */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant={currentPeriod === "custom" ? "default" : "outline"}
-            size="sm"
-            className={cn(
-              "w-full font-normal text-xs sm:text-sm",
-              dateRange?.from ? "justify-start text-left" : "justify-center text-center"
-            )}
-          >
-            <CalendarIcon className={cn("h-4 w-4 flex-shrink-0", dateRange?.from ? "mr-2" : "mr-2")} />
-            {dateRange?.from ? (
-              dateRange.to ? (
-                <>
-                  {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} -{" "}
-                  {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
-                </>
+      {/* Custom date range picker + extra actions */}
+      <div className="flex items-center gap-2">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={currentPeriod === "custom" ? "default" : "outline"}
+              size="sm"
+              className={cn(
+                "font-normal text-xs sm:text-sm",
+                extraActions ? "flex-1" : "w-full",
+                dateRange?.from ? "justify-start text-left" : "justify-center text-center"
+              )}
+            >
+              <CalendarIcon className={cn("h-4 w-4 flex-shrink-0", dateRange?.from ? "mr-2" : "mr-2")} />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} -{" "}
+                    {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
+                  </>
+                ) : (
+                  format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
+                )
               ) : (
-                format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
-              )
-            ) : (
-              <span>Período personalizado</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="center">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={dateRange?.from}
-            selected={dateRange}
-            onSelect={handleCustomRangeSelect}
-            numberOfMonths={isMobile ? 1 : 2}
-            locale={ptBR}
-            className="pointer-events-auto"
-          />
-        </PopoverContent>
-      </Popover>
+                <span>Período personalizado</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="center">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange?.from}
+              selected={dateRange}
+              onSelect={handleCustomRangeSelect}
+              numberOfMonths={isMobile ? 1 : 2}
+              locale={ptBR}
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        {extraActions}
+      </div>
     </div>
   );
 }

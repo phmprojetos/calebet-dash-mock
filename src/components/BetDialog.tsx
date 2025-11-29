@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFixturesSearch } from "@/hooks/useFixturesSearch";
+import { useFixturesSearch, useEvents } from "@/hooks/useFixturesSearch";
 import { Search, X, Loader2, Calendar, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -62,6 +62,45 @@ export function BetDialog({ open, onOpenChange, bet, initialEvent, onSave }: Bet
     limit: 10,
     enabled: inputMode === "search" && showDropdown,
   });
+
+  // Buscar eventos de hoje (inclui ao vivo)
+  const todayKey = new Date().toISOString().split("T")[0];
+  const { events: todayEvents } = useEvents({
+    date: todayKey,
+    limit: 50,
+    enabled: inputMode === "search" && showDropdown && debouncedQuery.length >= 2,
+  });
+
+  // Filtrar eventos de hoje que correspondem à busca e converter para FixtureSearchResult
+  const liveFixtures: FixtureSearchResult[] = useMemo(() => {
+    if (!todayEvents || debouncedQuery.length < 2) return [];
+    
+    const query = debouncedQuery.toLowerCase();
+    return todayEvents
+      .filter((event) => {
+        const homeTeam = event.home_team.toLowerCase();
+        const awayTeam = event.away_team.toLowerCase();
+        const league = event.league.toLowerCase();
+        return homeTeam.includes(query) || awayTeam.includes(query) || league.includes(query);
+      })
+      .map((event) => ({
+        id: event.fixture_id || parseInt(event.id.replace("fixture-", "")) || Math.random(),
+        event_name: `${event.home_team} vs ${event.away_team}${event.is_live ? " 🔴 LIVE" : ""}`,
+        home_team_name: event.home_team,
+        away_team_name: event.away_team,
+        home_team_logo: event.home_team_logo,
+        away_team_logo: event.away_team_logo,
+        date: `${event.date}T${event.time.replace("AO VIVO", "00:00")}:00`,
+        league_id: 0,
+      }));
+  }, [todayEvents, debouncedQuery]);
+
+  // Mesclar resultados: eventos de hoje (live) primeiro, depois busca API
+  const allFixtures = useMemo(() => {
+    const liveIds = new Set(liveFixtures.map((f) => f.id));
+    const apiFiltered = fixtures.filter((f) => !liveIds.has(f.id));
+    return [...liveFixtures, ...apiFiltered].slice(0, 15);
+  }, [liveFixtures, fixtures]);
 
   const [formData, setFormData] = useState<FormData>({
     id: "",
@@ -368,9 +407,9 @@ export function BetDialog({ open, onOpenChange, bet, initialEvent, onSave }: Bet
                         <div className="flex items-center justify-center py-4">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : fixtures.length > 0 ? (
+                      ) : allFixtures.length > 0 ? (
                         <div className="py-1">
-                          {fixtures.map((fixture) => (
+                          {allFixtures.map((fixture) => (
                             <button
                               key={fixture.id}
                               type="button"
