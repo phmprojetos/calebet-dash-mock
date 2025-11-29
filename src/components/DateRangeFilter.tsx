@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export type DateRangePeriod = "today" | "7days" | "30days" | "all" | "custom";
 
@@ -30,6 +31,7 @@ export function DateRangeFilter({
 }: DateRangeFilterProps) {
   const [internalSelectedPeriod, setInternalSelectedPeriod] = useState<DateRangePeriod>(selectedPeriod ?? "all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const isMobile = useIsMobile();
 
   const currentPeriod = selectedPeriod ?? internalSelectedPeriod;
 
@@ -120,51 +122,55 @@ export function DateRangeFilter({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
-      <Button
-        variant={currentPeriod === "today" ? "default" : "outline"}
-        size="sm"
-        onClick={() => handlePeriodClick("today")}
-        className="min-w-[80px]"
-      >
-        Hoje
-      </Button>
+    <div className="flex flex-col gap-3 mb-6">
+      {/* Period buttons */}
+      <div className="grid grid-cols-4 gap-2">
+        <Button
+          variant={currentPeriod === "today" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePeriodClick("today")}
+          className="w-full text-xs sm:text-sm"
+        >
+          Hoje
+        </Button>
 
-      <Button
-        variant={currentPeriod === "7days" ? "default" : "outline"}
-        size="sm"
-        onClick={() => handlePeriodClick("7days")}
-        className="min-w-[80px]"
-      >
-        7 dias
-      </Button>
+        <Button
+          variant={currentPeriod === "7days" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePeriodClick("7days")}
+          className="w-full text-xs sm:text-sm"
+        >
+          7 dias
+        </Button>
 
-      <Button
-        variant={currentPeriod === "30days" ? "default" : "outline"}
-        size="sm"
-        onClick={() => handlePeriodClick("30days")}
-        className="min-w-[80px]"
-      >
-        30 dias
-      </Button>
+        <Button
+          variant={currentPeriod === "30days" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePeriodClick("30days")}
+          className="w-full text-xs sm:text-sm"
+        >
+          30 dias
+        </Button>
 
-      <Button
-        variant={currentPeriod === "all" ? "default" : "outline"}
-        size="sm"
-        onClick={() => handlePeriodClick("all")}
-        className="min-w-[80px]"
-      >
-        Todos
-      </Button>
+        <Button
+          variant={currentPeriod === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => handlePeriodClick("all")}
+          className="w-full text-xs sm:text-sm"
+        >
+          Todos
+        </Button>
+      </div>
 
+      {/* Custom date range picker */}
       <Popover>
         <PopoverTrigger asChild>
           <Button
             variant={currentPeriod === "custom" ? "default" : "outline"}
             size="sm"
-            className={cn("min-w-[240px] justify-start text-left font-normal")}
+            className={cn("w-full justify-start text-left font-normal text-xs sm:text-sm")}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
             {dateRange?.from ? (
               dateRange.to ? (
                 <>
@@ -186,7 +192,7 @@ export function DateRangeFilter({
             defaultMonth={dateRange?.from}
             selected={dateRange}
             onSelect={handleCustomRangeSelect}
-            numberOfMonths={2}
+            numberOfMonths={isMobile ? 1 : 2}
             locale={ptBR}
             className="pointer-events-auto"
           />
